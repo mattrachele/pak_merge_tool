@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Version 0.1
+# Version 0.1.1
 
 """Tool to merge Stalker 2 mod pak files into a single pak file.
     Most of the files in the pak files are text files, so the tool
@@ -16,13 +16,12 @@
 # Should update existing code with new code from incoming mods
 # Should have an option to give user a choice between existing code and new code
 
-# Wishlist:
-# - Add a comment to the merged file with the name of the mod that the code came from with a date and version number
-#   - Add support for version checking to display version differences and check for lines removed in newer versions
-# - Add direct support to call repak to handle the pak files
-# - Add handling for utoc and ucas files
-
+# TODO: Add a comment to the merged file with the name of the mod that the code came from with a date and version number
+# TODO: Add support for version checking to display version differences and check for lines removed in newer versions
+# TODO: Add direct support to call repak to handle the pak files
+# TODO: Add handling for utoc and ucas files
 # TODO: Add pytest file and two test files to test the merge functionality
+# TODO: Add github workflows to run the tests
 
 import os
 import shutil
@@ -105,13 +104,16 @@ def confirm_choice(original_lines, new_lines):
             "Confirm your choice:\n"
             "1. Accept\n"
             "2. Choose another option\n"
-            "3. Quit\n"
-            "Enter your choice (1/2/3): "
+            "3. Quit and Save\n"
+            "4. Quit\n"
+            "Enter your choice: "
         ).strip()
-        if user_choice in {"1", "2", "3"}:
-            return user_choice
-        else:
+
+        if not user_choice or user_choice not in {"1", "2", "3", "4"}:
             print("Invalid choice. Please choose again.")
+            continue
+
+        return user_choice
 
 
 def view_text_with_pydoc(text):
@@ -122,8 +124,18 @@ def view_text_with_pydoc(text):
 
 def view_text_with_less(text):
     """View the contents of a text using less."""
+    # Add color to the text
+    for i, line in enumerate(text):
+        if line.startswith("+"):
+            text[i] = Fore.GREEN + line
+        elif line.startswith("-"):
+            text[i] = Fore.RED + line
+        elif line.startswith("@"):
+            text[i] = Fore.CYAN + line
+
     less_txt = "".join(text)
-    subprocess.run(["less"], input=less_txt, text=True, shell=True)
+    process = subprocess.Popen(["less", '-R'], stdin=subprocess.PIPE)
+    process.communicate(input=less_txt.encode('utf-8'))
 
 
 def open_files_in_vscode_compare(file1, file2):
@@ -200,9 +212,6 @@ def choice_handler(
             )
         display_chunk_current_line += 1
 
-    # TODO: Provide diff measurement details for the whole chunk
-    # print(f"Total diff lines: {total_diff_lines} | Total display chunks: {len(display_chunk_array)}")
-
     # Loop through the chunked lines and display them in chunks
     for disp_chunk_line_info in display_chunk_array:
         if not disp_chunk_line_info or disp_chunk_line_info[0] is None:
@@ -235,7 +244,7 @@ def choice_handler(
             tmp_merged_mod_lines.extend(tmp_matching_lines)
             final_merged_mod_current_process_line = final_merged_mod_start_line
 
-        # TODO: Think about diffs at end of chunk
+        # NOTE: Could be issues near end of chunks, however, KISS for now - just use gui editor for those cases
 
         # Display the chunked lines with color coding
         for line in disp_diff_chunk:
@@ -252,15 +261,16 @@ def choice_handler(
             # Ask the user for a choice for the chunk
             user_choice = input(
                 "\nOptions:\n"
-                "1. Display Chunk: Skip - Make No Changes\n"
-                "2. Display Chunk: Overwrite with New Changes\n"
-                "3. Display Chunk: Insert only New Lines\n"
-                "4. Whole Chunk: Skip - Make No Changes\n"
-                "5. Whole Chunk: Overwrite with New Changes\n"
-                "6. Whole Chunk: Insert only New Lines\n"
-                "7. Whole Chunk: View in CLI\n"
-                "8. Whole Chunk: Open in VS Code\n"
-                "9. Quit\n"
+                "1.  Display Chunk: Skip - Make No Changes\n"
+                "2.  Display Chunk: Overwrite with New Changes\n"
+                "3.  Display Chunk: Insert only New Lines\n"
+                "4.  Whole Chunk: Skip - Make No Changes\n"
+                "5.  Whole Chunk: Overwrite with New Changes\n"
+                "6.  Whole Chunk: Insert only New Lines\n"
+                "7.  Whole Chunk: View in CLI\n"
+                "8.  Whole Chunk: Open in VS Code\n"
+                "9.  Quit and Save\n"
+                "10. Quit\n"
                 "Enter your choice: "
             ).strip()
 
@@ -274,12 +284,18 @@ def choice_handler(
                 "7",
                 "8",
                 "9",
+                "10",
             }:
                 print("Invalid choice. Please choose again.")
                 continue
 
             if user_choice == "9":
-                return "quit"
+                return {
+                    "processed_lines": tmp_merged_mod_lines,
+                    "status": "quit-save",
+                }
+            elif user_choice == "10":
+                return {"status": "quit"}
 
             if user_choice == "1":
                 # Skip - Keep the current chunk
@@ -297,11 +313,17 @@ def choice_handler(
             elif user_choice == "4":
                 # Skip - Keep the current chunk
                 new_lines = f_final_merged_mod_chunk
-                return new_lines
+                return {
+                    "processed_lines": new_lines,
+                    "status": "continue",
+                }
             elif user_choice == "5":
                 # Overwrite the final_merged_mod chunk with the new_mods chunk
                 new_lines = f_new_mod_chunk
-                return new_lines
+                return {
+                    "processed_lines": new_lines,
+                    "status": "continue",
+                }
             elif user_choice == "6":
                 # Merge the chunks by appending non-duplicate lines from new_mods to final_merged_mod
                 new_lines = [
@@ -309,7 +331,10 @@ def choice_handler(
                     for line in f_new_mod_chunk
                     if line not in f_final_merged_mod_chunk
                 ]
-                return new_lines
+                return {
+                    "processed_lines": new_lines,
+                    "status": "continue",
+                }
             elif user_choice == "7":
                 if not validated_requirements["less"]:
                     print(
@@ -336,7 +361,6 @@ def choice_handler(
                 confirm = confirm_choice(disp_final_merged_mod_chunk, new_lines)
                 if confirm == "1":
                     tmp_merged_mod_lines.extend(new_lines)
-                    # TODO: test this
                     final_merged_mod_current_process_line = (
                         final_merged_mod_start_line + final_merged_mod_length
                     )
@@ -344,23 +368,41 @@ def choice_handler(
                 elif confirm == "2":
                     continue
                 elif confirm == "3":
-                    return "quit"
+                    tmp_merged_mod_lines.extend(new_lines)
+                    return {
+                        "status": "quit-save",
+                        "processed_lines": tmp_merged_mod_lines,
+                    }
+                elif confirm == "4":
+                    return {"status": "quit"}
             else:
                 tmp_merged_mod_lines.extend(new_lines)
-                # TODO: Test this
                 final_merged_mod_current_process_line = (
                     final_merged_mod_start_line + final_merged_mod_length
                 )
                 break
 
-    return tmp_merged_mod_lines
+    return {
+        "status": "continue",
+        "processed_lines": tmp_merged_mod_lines,
+    }
+
+
+def reload_tmp_merged_mod_file(tmp_merged_mod_file):
+    """Reload the temporary merged mod file and return the last processed line."""
+    if not os.path.exists(tmp_merged_mod_file):
+        return 0
+
+    with open(tmp_merged_mod_file, "r") as tmp_merged_mod:
+        lines = tmp_merged_mod.readlines()
+        last_processed_line = len(lines)
+
+    return last_processed_line
 
 
 def merge_files(new_mods_file, final_merged_mod_file):
     """Merge the contents of two text files, handling conflicts."""
-
-    # TODO: Update to max_perf_chunk_size and use dynanic chunk size based on file size and the display chunk sizes
-    perf_chunk_size = 1024  # Define the chunk size for reading the files
+    max_perf_chunk_size = 1024  # Define the chunk size for reading the files
 
     print(f"Mrg: {new_mods_file}\n" f"New: {final_merged_mod_file}")
 
@@ -368,27 +410,34 @@ def merge_files(new_mods_file, final_merged_mod_file):
     final_merged_mod_size = os.path.getsize(final_merged_mod_file)
     start_time = time.time()
 
-    # TODO: Re-load the tmp file and continue from the last process line
     # Create a temporary file to store the merged contents
     temp_merged_mod_file = final_merged_mod_file + ".tmp"
+    # Check if the temporary file exists and reload the last processed line
+    last_processed_line = reload_tmp_merged_mod_file(temp_merged_mod_file)
+
     with open(new_mods_file, "r") as new_mod, open(
         final_merged_mod_file, "r"
     ) as final_merged_mod, open(temp_merged_mod_file, "w") as temp_merged_mod:
         with tqdm(
             total=new_mod_size, unit="B", unit_scale=True, desc=new_mods_file
         ) as pbar:
+            # if last_processed_line is not 0, skip to the last processed line
+            if last_processed_line:
+                for _ in range(last_processed_line):
+                    next(new_mod)
+                    next(final_merged_mod)
+
             while True:
                 # Read a chunk of lines from each file based on the chunk size
-                # NOTE: Seems next iterates so no need for an offset variable
                 new_mod_chunk = [
                     line
-                    for line in (next(new_mod, None) for _ in range(perf_chunk_size))
+                    for line in (next(new_mod, None) for _ in range(max_perf_chunk_size))
                     if line is not None
                 ]
                 final_merged_mod_chunk = [
                     line
                     for line in (
-                        next(final_merged_mod, None) for _ in range(perf_chunk_size)
+                        next(final_merged_mod, None) for _ in range(max_perf_chunk_size)
                     )
                     if line is not None
                 ]
@@ -417,18 +466,22 @@ def merge_files(new_mods_file, final_merged_mod_file):
 
                 print("\nHandling diff...")
                 # Handle the user's choice for the diff
-                tmp_merged_mod_lines = choice_handler(
+                choice = choice_handler(
                     new_mods_file,
                     final_merged_mod_file,
                     diff,
                     formatted_final_merged_mod_chunk,
                     formatted_new_mod_chunk,
                 )
-                if tmp_merged_mod_lines == "quit":
+
+                if choice["status"] == "quit-save":
+                    temp_merged_mod.writelines(choice["processed_lines"])
+                    return "quit"
+                elif choice["status"] == "quit":
                     return "quit"
 
                 # Write the new lines to the temporary file
-                temp_merged_mod.writelines(tmp_merged_mod_lines)
+                temp_merged_mod.writelines(choice["processed_lines"])
 
                 pbar.update(len("".join(new_mod_chunk)))
             # if EOF update the progress bar to 100%
@@ -477,6 +530,7 @@ def merge_directories(new_mods_dir, final_merged_mod_dir):
 
 def main():
     """Main function to merge mod directories."""
+    # TODO: Take in directories as command line arguments
     # Define the new_mods and final_merged_mod directories
     new_mods_base_dir = r"..\unpacked"
     final_merged_mod_base_dir = r"..\unpacked\~merged_mods_v1-0_P"

@@ -7,7 +7,7 @@
     will merge the text files and remove duplicates."""
 
 # Usage: python merge_tool.py --verbose --confirm
-# Example: clear;python .\merge_tool.py --confirm
+# Example: clear;python .\merge_tool.py --new_mods_dir="..\unpacked" --final_merged_mod_dir="..\unpacked\~merged_mods_v1-0_P"
 
 # Step 1: Unpak the pak files using ReUnpak.bat (Uses repak.exe)
 
@@ -33,21 +33,13 @@ from colorama import init, Fore, Style
 import re
 import pydoc
 import subprocess
+import json
 
 # Initialize colorama
 init(autoreset=True)
 
-# Define the command-line arguments
-parser = argparse.ArgumentParser(description="Merge mod directories.")
-parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
-parser.add_argument("--confirm", action="store_true", help="Disable user confirmation")
-args = parser.parse_args()
 
-print(f"Verbose: {args.verbose}")
-print(f"Confirm: {args.confirm}")
-
-
-def version_check(command):
+def version_check(command) -> bool:
     """Check the version of a command."""
     try:
         result = subprocess.run(
@@ -64,7 +56,7 @@ def version_check(command):
     return True
 
 
-def validate_requirements():
+def validate_requirements() -> dict:
     """Validate that the required tools are available."""
     validated_requirements = {}
 
@@ -83,17 +75,17 @@ def validate_requirements():
 validated_requirements = validate_requirements()
 
 
-def strip_whitespace(lines):
+def strip_whitespace(lines) -> list:
     """Strip leading and trailing whitespace from each line."""
     return [re.sub(r"^[ \t]+|[ \t]+$", "", line) for line in lines]
 
 
-def filter_updated_lines(original_lines, new_lines):
+def filter_updated_lines(original_lines, new_lines) -> list:
     """Filter out the lines that were not changed."""
     return [line for line in new_lines if line not in original_lines]
 
 
-def confirm_choice(original_lines, new_lines):
+def confirm_choice(original_lines, new_lines) -> str:
     """Display the new lines and ask for confirmation."""
     updated_lines = filter_updated_lines(original_lines, new_lines)
     print("New lines to be added:")
@@ -116,13 +108,13 @@ def confirm_choice(original_lines, new_lines):
         return user_choice
 
 
-def view_text_with_pydoc(text):
+def view_text_with_pydoc(text) -> None:
     """View the contents of a text using pydoc."""
     pydoc_txt = "".join(text)
     pydoc.pager(pydoc_txt)
 
 
-def view_text_with_less(text):
+def view_text_with_less(text) -> None:
     """View the contents of a text using less."""
     # Add color to the text
     for i, line in enumerate(text):
@@ -134,11 +126,11 @@ def view_text_with_less(text):
             text[i] = Fore.CYAN + line
 
     less_txt = "".join(text)
-    process = subprocess.Popen(["less", '-R'], stdin=subprocess.PIPE)
-    process.communicate(input=less_txt.encode('utf-8'))
+    process = subprocess.Popen(["less", "-R"], stdin=subprocess.PIPE)
+    process.communicate(input=less_txt.encode("utf-8"))
 
 
-def open_files_in_vscode_compare(file1, file2):
+def open_files_in_vscode_compare(file1, file2) -> None:
     """Open two files in VS Code compare mode."""
     print("Opening in VS Code...")
     print(f"Final Merged Mod File: {file1}\n" f"New Mods File: {file2}")
@@ -149,8 +141,6 @@ def open_files_in_vscode_compare(file1, file2):
 
     subprocess.run(["code", "--diff", abs_file1, abs_file2], shell=True)
 
-    return True
-
 
 def choice_handler(
     new_mods_file,
@@ -158,8 +148,8 @@ def choice_handler(
     diff_lines,
     f_final_merged_mod_chunk,
     f_new_mod_chunk,
-    confirm=False,
-):
+    confirm_user_choice=False,
+) -> dict:
     """Handle the user's choice for the diff.
     Takes in the performanced chunked lines, splits them into display chunks,
     asks the user for a choice per display chunk, allows confirmation of the choice,
@@ -212,10 +202,17 @@ def choice_handler(
             )
         display_chunk_current_line += 1
 
+    # Add the last end line to the last display chunk
+    if display_chunk_array:
+        display_chunk_array[-1].append(display_chunk_current_line)
+
     # Loop through the chunked lines and display them in chunks
     for disp_chunk_line_info in display_chunk_array:
         if not disp_chunk_line_info or disp_chunk_line_info[0] is None:
             break
+
+        # Print the nested display chunk info
+        print(f"Display Chunk Info: {json.dumps(disp_chunk_line_info, indent=4)}")
 
         final_merged_mod_start_line = disp_chunk_line_info[0]
         final_merged_mod_length = disp_chunk_line_info[1]
@@ -357,7 +354,7 @@ def choice_handler(
                 continue
 
             # If cmd line argument is set, confirm the user's choice
-            if args.confirm:
+            if confirm_user_choice:
                 confirm = confirm_choice(disp_final_merged_mod_chunk, new_lines)
                 if confirm == "1":
                     tmp_merged_mod_lines.extend(new_lines)
@@ -388,7 +385,7 @@ def choice_handler(
     }
 
 
-def reload_tmp_merged_mod_file(tmp_merged_mod_file):
+def reload_tmp_merged_mod_file(tmp_merged_mod_file) -> int:
     """Reload the temporary merged mod file and return the last processed line."""
     if not os.path.exists(tmp_merged_mod_file):
         return 0
@@ -400,7 +397,7 @@ def reload_tmp_merged_mod_file(tmp_merged_mod_file):
     return last_processed_line
 
 
-def merge_files(new_mods_file, final_merged_mod_file):
+def merge_files(new_mods_file, final_merged_mod_file, confirm_user_choice=False) -> str:
     """Merge the contents of two text files, handling conflicts."""
     max_perf_chunk_size = 1024  # Define the chunk size for reading the files
 
@@ -431,7 +428,9 @@ def merge_files(new_mods_file, final_merged_mod_file):
                 # Read a chunk of lines from each file based on the chunk size
                 new_mod_chunk = [
                     line
-                    for line in (next(new_mod, None) for _ in range(max_perf_chunk_size))
+                    for line in (
+                        next(new_mod, None) for _ in range(max_perf_chunk_size)
+                    )
                     if line is not None
                 ]
                 final_merged_mod_chunk = [
@@ -472,6 +471,7 @@ def merge_files(new_mods_file, final_merged_mod_file):
                     diff,
                     formatted_final_merged_mod_chunk,
                     formatted_new_mod_chunk,
+                    confirm_user_choice
                 )
 
                 if choice["status"] == "quit-save":
@@ -498,10 +498,10 @@ def merge_files(new_mods_file, final_merged_mod_file):
     elapsed_time = end_time - start_time
     print(f"Processing time: {elapsed_time:.2f} seconds")
     print()
-    return None
+    return "continue"
 
 
-def merge_directories(new_mods_dir, final_merged_mod_dir):
+def merge_directories(new_mods_dir, final_merged_mod_dir, confirm_user_choice=False) -> str:
     """Recursively merge the contents of two directories."""
     # Ensure the final_merged_mod directory exists
     if not os.path.exists(final_merged_mod_dir):
@@ -514,40 +514,54 @@ def merge_directories(new_mods_dir, final_merged_mod_dir):
 
         if os.path.isdir(new_mods_item):
             # If the item is a directory, recursively merge it
-            result = merge_directories(new_mods_item, final_merged_mod_item)
+            result = merge_directories(new_mods_item, final_merged_mod_item, confirm_user_choice)
             if result == "quit":
                 return "quit"
         else:
             # If the item is a file, handle conflicts
             if os.path.exists(final_merged_mod_item):
-                result = merge_files(new_mods_item, final_merged_mod_item)
+                result = merge_files(new_mods_item, final_merged_mod_item, confirm_user_choice)
                 if result == "quit":
                     return "quit"
             else:
                 shutil.copy2(new_mods_item, final_merged_mod_item)
-    return None
+    return "continue"
 
 
-def main():
+def main() -> bool:
     """Main function to merge mod directories."""
-    # TODO: Take in directories as command line arguments
-    # Define the new_mods and final_merged_mod directories
-    new_mods_base_dir = r"..\unpacked"
-    final_merged_mod_base_dir = r"..\unpacked\~merged_mods_v1-0_P"
+    # Define the command-line arguments
+    parser = argparse.ArgumentParser(description="Merge mod directories.")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+    parser.add_argument("--confirm", action="store_true", help="Disable user confirmation")
+    parser.add_argument("--new_mods_dir", help="The directory containing the new mods")
+    parser.add_argument(
+        "--final_merged_mod_dir", help="The directory containing the final merged mods"
+    )
+    args = parser.parse_args()
+
+    print(f"Verbose: {args.verbose}")
+    print(f"Confirm: {args.confirm}")
+
+    if not args.new_mods_dir or not args.final_merged_mod_dir:
+        print("new_mods_dir and final_merged_mod_dir are required as cmd ln args.")
+        return False
 
     # Iterate through all directories in the new_mods base directory
-    for dir_name in os.listdir(new_mods_base_dir):
-        new_mods_dir = os.path.join(new_mods_base_dir, dir_name)
+    for dir_name in os.listdir(args.new_mods_dir):
+        new_mods_dir = os.path.join(args.new_mods_dir, dir_name)
+        print(f"Processing directory: {new_mods_dir}")
         if (
             os.path.isdir(new_mods_dir)
-            and not new_mods_dir == final_merged_mod_base_dir
+            and not new_mods_dir == args.final_merged_mod_dir
         ):
-            result = merge_directories(new_mods_dir, final_merged_mod_base_dir)
+            result = merge_directories(new_mods_dir, args.final_merged_mod_dir, args.confirm)
             if result == "quit":
                 print("Merge aborted.")
-                return
+                return False
 
     print("Merge complete.")
+    return True
 
 
 if __name__ == "__main__":

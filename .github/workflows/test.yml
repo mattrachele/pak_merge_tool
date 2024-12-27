@@ -27,11 +27,11 @@ jobs:
 
             - name: Run black
               run: |
-                  python -m black pak_merge_tool/
+                  python -m black .
 
             - name: Run pylint
               run: |
-                  python -m pylint pak_merge_tool/
+                  python -m pylint .
 
             - name: Run pytest tests
               run: |

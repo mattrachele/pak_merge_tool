@@ -20,7 +20,7 @@
 # TODO: Add support for version checking to display version differences and check for lines removed in newer versions
 # TODO: Add direct support to call repak to handle the pak files
 # TODO: Add handling for utoc and ucas files
-# TODO: Add pytest file and two test files to test the merge functionality
+# TODO: Add two test files to test the merge functionality
 # TODO: Add github workflows to run the tests
 
 import os
@@ -471,7 +471,7 @@ def merge_files(new_mods_file, final_merged_mod_file, confirm_user_choice=False)
                     diff,
                     formatted_final_merged_mod_chunk,
                     formatted_new_mod_chunk,
-                    confirm_user_choice
+                    confirm_user_choice,
                 )
 
                 if choice["status"] == "quit-save":
@@ -501,7 +501,9 @@ def merge_files(new_mods_file, final_merged_mod_file, confirm_user_choice=False)
     return "continue"
 
 
-def merge_directories(new_mods_dir, final_merged_mod_dir, confirm_user_choice=False) -> str:
+def merge_directories(
+    new_mods_dir, final_merged_mod_dir, confirm_user_choice=False
+) -> str:
     """Recursively merge the contents of two directories."""
     # Ensure the final_merged_mod directory exists
     if not os.path.exists(final_merged_mod_dir):
@@ -514,13 +516,17 @@ def merge_directories(new_mods_dir, final_merged_mod_dir, confirm_user_choice=Fa
 
         if os.path.isdir(new_mods_item):
             # If the item is a directory, recursively merge it
-            result = merge_directories(new_mods_item, final_merged_mod_item, confirm_user_choice)
+            result = merge_directories(
+                new_mods_item, final_merged_mod_item, confirm_user_choice
+            )
             if result == "quit":
                 return "quit"
         else:
             # If the item is a file, handle conflicts
             if os.path.exists(final_merged_mod_item):
-                result = merge_files(new_mods_item, final_merged_mod_item, confirm_user_choice)
+                result = merge_files(
+                    new_mods_item, final_merged_mod_item, confirm_user_choice
+                )
                 if result == "quit":
                     return "quit"
             else:
@@ -533,7 +539,9 @@ def main() -> bool:
     # Define the command-line arguments
     parser = argparse.ArgumentParser(description="Merge mod directories.")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
-    parser.add_argument("--confirm", action="store_true", help="Disable user confirmation")
+    parser.add_argument(
+        "--confirm", action="store_true", help="Disable user confirmation"
+    )
     parser.add_argument("--new_mods_dir", help="The directory containing the new mods")
     parser.add_argument(
         "--final_merged_mod_dir", help="The directory containing the final merged mods"
@@ -555,7 +563,9 @@ def main() -> bool:
             os.path.isdir(new_mods_dir)
             and not new_mods_dir == args.final_merged_mod_dir
         ):
-            result = merge_directories(new_mods_dir, args.final_merged_mod_dir, args.confirm)
+            result = merge_directories(
+                new_mods_dir, args.final_merged_mod_dir, args.confirm
+            )
             if result == "quit":
                 print("Merge aborted.")
                 return False

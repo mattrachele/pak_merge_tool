@@ -12,7 +12,7 @@ import sys
 import argparse
 
 # Add the directory containing merge_tool.py to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 class TestMergeTool(unittest.TestCase):
@@ -133,7 +133,7 @@ class TestMergeTool(unittest.TestCase):
             final_merged_mod_file,
             diff_lines,
             f_final_merged_mod_chunk,
-            f_new_mod_chunk
+            f_new_mod_chunk,
         )
         assert result["status"] == "continue"
         assert result["processed_lines"] == ["test3", "test4"]
@@ -156,7 +156,15 @@ class TestMergeTool(unittest.TestCase):
     @patch("os.path.exists")
     @patch("os.remove")
     def test_merge_files(
-        self, mock_remove, mock_exists, mock_move, mock_choice_handler, mock_strip_whitespace, mock_open, mock_reload_tmp_merged_mod_file, mock_getsize
+        self,
+        mock_remove,
+        mock_exists,
+        mock_move,
+        mock_choice_handler,
+        mock_strip_whitespace,
+        mock_open,
+        mock_reload_tmp_merged_mod_file,
+        mock_getsize,
     ):
         from merge_tool import merge_files
 
@@ -166,7 +174,10 @@ class TestMergeTool(unittest.TestCase):
         mock_getsize.return_value = 0
         mock_reload_tmp_merged_mod_file.return_value = 0
         mock_strip_whitespace.return_value = ["test"]
-        mock_choice_handler.return_value = {"status": "continue", "processed_lines": ["test"]}
+        mock_choice_handler.return_value = {
+            "status": "continue",
+            "processed_lines": ["test"],
+        }
         mock_exists.return_value = True
         mock_move.return_value = None
 
@@ -182,7 +193,17 @@ class TestMergeTool(unittest.TestCase):
     @patch("os.path.exists")
     @patch("merge_tool.merge_files")
     @patch("merge_tool.merge_directories")
-    def test_merge_directories(self, mock_merge_directories, mock_merge_files, mock_exists, mock_makedirs, mock_copy2, mock_list_dir, mock_is_dir, mock_path_join):
+    def test_merge_directories(
+        self,
+        mock_merge_directories,
+        mock_merge_files,
+        mock_exists,
+        mock_makedirs,
+        mock_copy2,
+        mock_list_dir,
+        mock_is_dir,
+        mock_path_join,
+    ):
         from merge_tool import merge_directories
 
         new_mods_dir = "test1"
@@ -196,7 +217,6 @@ class TestMergeTool(unittest.TestCase):
         mock_merge_files.return_value = "continue"
         mock_merge_directories.return_value = "continue"
 
-
         result = merge_directories(new_mods_dir, final_merged_mod_dir)
         assert result == "continue"
 
@@ -206,14 +226,21 @@ class TestMergeTool(unittest.TestCase):
     @patch("os.listdir")
     @patch("os.path.isdir")
     @patch("os.path.join", side_effect=os.path.join)
-    def test_main(self, mock_path_join, mock_is_dir, mock_list_dir, mock_parse_args, mock_merge_directories):
+    def test_main(
+        self,
+        mock_path_join,
+        mock_is_dir,
+        mock_list_dir,
+        mock_parse_args,
+        mock_merge_directories,
+    ):
         from merge_tool import main
 
         mock_parse_args.return_value = argparse.Namespace(
             new_mods_dir="test1",
             final_merged_mod_dir="test2",
             verbose=False,
-            confirm=False
+            confirm=False,
         )
         mock_merge_directories.return_value = "quit"
         # mock_path_join.side_effect = lambda *args: original_os_path_join(*args)

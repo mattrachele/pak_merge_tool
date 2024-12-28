@@ -28,11 +28,6 @@ jobs:
             - name: Check out code
               uses: actions/checkout@v4
 
-            # - name: Set up Python 3.9
-            #   uses: actions/setup-python@v2
-            #   with:
-            #     python-version: 3.9
-
             - name: Run pylint
               run: |
                 pip install -r tests/requirements.txt  # Install test dependencies
@@ -44,16 +39,8 @@ jobs:
             - name: Check out code
               uses: actions/checkout@v4
 
-            # - name: Set up Python 3.9
-            #   uses: actions/setup-python@v2
-            #   with:
-            #     python-version: 3.9
-
-            - name: Print cwd
-              run: pwd
-
             - name: Run pytest tests
               run: |
                 pip install -r tests/requirements.txt  # Install test dependencies
-                python -m pytest tests/functional_test.py  # Run functional tests
+                python -m pytest tests/functional_tests.py  # Run functional tests
 

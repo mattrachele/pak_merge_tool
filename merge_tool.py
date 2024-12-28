@@ -20,8 +20,6 @@
 # TODO: Add support for version checking to display version differences and check for lines removed in newer versions
 # TODO: Add direct support to call repak to handle the pak files
 # TODO: Add handling for utoc and ucas files
-# TODO: Add two test files to test the merge functionality
-# TODO: Add github workflows to run the tests
 
 import os
 import shutil
@@ -575,17 +573,53 @@ def main() -> bool:
     # Validate the requirements
     valid_requirements = validate_requirements()
 
+    # Check if the final_merged_mod_dir is a directory and isn't inside the new_mods_dir
+    if not os.path.isdir(args.final_merged_mod_dir):
+        print(f"{args.final_merged_mod_dir} is not a directory.")
+        return False
+
+    # Check if the new_mods_dir is a directory
+    if not os.path.isdir(args.new_mods_dir):
+        print(f"{args.new_mods_dir} is not a directory.")
+        return False
+
+    final_merged_mod_dir_abs = os.path.abspath(args.final_merged_mod_dir)
+    new_mods_dir_abs = os.path.abspath(args.new_mods_dir)
+    if new_mods_dir_abs.startswith(
+        final_merged_mod_dir_abs
+    ) or final_merged_mod_dir_abs.startswith(new_mods_dir_abs):
+        print("Cannot merge directories that are inside each other.")
+        return False
+
     # Iterate through all directories in the new_mods base directory
-    for dir_name in os.listdir(args.new_mods_dir):
-        new_mods_dir = os.path.join(args.new_mods_dir, dir_name)
-        print(f"Processing directory: {new_mods_dir}")
-        if (
-            os.path.isdir(new_mods_dir)
-            and not new_mods_dir == args.final_merged_mod_dir
-        ):
+    for path_name in os.listdir(args.new_mods_dir):
+        new_mods_path = os.path.join(args.new_mods_dir, path_name)
+        print(f"Processing new mods path: {new_mods_path}")
+        # Check if the item is a directory
+        if os.path.isdir(new_mods_path):
             result = merge_directories(
-                new_mods_dir,
+                new_mods_path,
                 args.final_merged_mod_dir,
+                valid_requirements,
+                args.confirm,
+            )
+            if result == "quit":
+                print("Merge aborted.")
+                return False
+
+        # Handle the case where the item is a file in the root directory
+        else:
+            final_merged_mod_path = os.path.join(args.final_merged_mod_dir, path_name)
+            print(f"Processing final merged mod path: {final_merged_mod_path}")
+
+            # Check if the final merged mod file exists and just copy it over if it doesn't
+            if not os.path.exists(final_merged_mod_path):
+                shutil.copy2(new_mods_path, final_merged_mod_path)
+                continue
+
+            result = merge_files(
+                new_mods_path,
+                final_merged_mod_path,
                 valid_requirements,
                 args.confirm,
             )

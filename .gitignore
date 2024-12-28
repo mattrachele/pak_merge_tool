@@ -169,3 +169,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Manual Add
+tests/merged_test_dir/*
+tests/new_test_dir/*

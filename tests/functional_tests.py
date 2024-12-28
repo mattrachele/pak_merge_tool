@@ -115,6 +115,7 @@ class TestMergeTool(unittest.TestCase):
     #     diff_lines,
     #     f_final_merged_mod_chunk,
     #     f_new_mod_chunk,
+    #     valid_requirements,
     #     confirm_user_choice=False,
     # ) -> dict
     @patch("merge_tool.input")
@@ -138,6 +139,7 @@ class TestMergeTool(unittest.TestCase):
         diff_lines = ["@@ -1,2 +1,2 @@\n", "-test3\n", "+test2\n", "test4\n"]
         f_final_merged_mod_chunk = ["test3", "test4"]
         f_new_mod_chunk = ["test2", "test4"]
+        valid_requirements = {"code": True, "less": True}
 
         mock_input.return_value = "1"
         mock_confirm_choice.return_value = "1"
@@ -148,6 +150,7 @@ class TestMergeTool(unittest.TestCase):
             diff_lines,
             f_final_merged_mod_chunk,
             f_new_mod_chunk,
+            valid_requirements,
         )
         assert result["status"] == "continue"
         assert result["processed_lines"] == ["test3", "test4"]
@@ -161,7 +164,7 @@ class TestMergeTool(unittest.TestCase):
         result = reload_tmp_merged_mod_file(tmp_merged_mod_file)
         assert result == 0
 
-    # Test merge_files(new_mods_file, final_merged_mod_file) -> str
+    # Test merge_files(new_mods_file, final_merged_mod_file, valid_requirements) -> str
     @patch("os.path.getsize")
     @patch("merge_tool.reload_tmp_merged_mod_file")
     @patch("builtins.open", new_callable=mock_open)
@@ -186,6 +189,7 @@ class TestMergeTool(unittest.TestCase):
 
         new_mods_file = "test1"
         final_merged_mod_file = "test2"
+        valid_requirements = {"code": True, "less": True}
 
         mock_getsize.return_value = 0
         mock_reload_tmp_merged_mod_file.return_value = 0
@@ -197,10 +201,10 @@ class TestMergeTool(unittest.TestCase):
         mock_exists.return_value = True
         mock_move.return_value = None
 
-        result = merge_files(new_mods_file, final_merged_mod_file)
+        result = merge_files(new_mods_file, final_merged_mod_file, valid_requirements)
         assert result == "continue"
 
-    # Test merge_directories(new_mods_dir, final_merged_mod_dir) -> str
+    # Test merge_directories(new_mods_dir, final_merged_mod_dir, valid_requirements) -> str
     @patch("os.path.join", side_effect=os.path.join)
     @patch("os.path.isdir")
     @patch("os.listdir")
@@ -225,6 +229,7 @@ class TestMergeTool(unittest.TestCase):
 
         new_mods_dir = "test1"
         final_merged_mod_dir = "test2"
+        valid_requirements = {"code": True, "less": True}
 
         mock_copy2.return_value = None
         mock_exists.return_value = False
@@ -234,7 +239,9 @@ class TestMergeTool(unittest.TestCase):
         mock_merge_files.return_value = "continue"
         mock_merge_directories.return_value = "continue"
 
-        result = merge_directories(new_mods_dir, final_merged_mod_dir)
+        result = merge_directories(
+            new_mods_dir, final_merged_mod_dir, valid_requirements
+        )
         assert result == "continue"
 
     # Test main() -> bool

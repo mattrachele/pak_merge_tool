@@ -75,10 +75,6 @@ def validate_requirements() -> dict:
     return validated_requirements
 
 
-# Validate the requirements
-valid_requirements = validate_requirements()
-
-
 def strip_whitespace(lines) -> list:
     """Strip leading and trailing whitespace from each line."""
     return [re.sub(r"^[ \t]+|[ \t]+$", "", line) for line in lines]
@@ -152,6 +148,7 @@ def choice_handler(
     diff_lines,
     f_final_merged_mod_chunk,
     f_new_mod_chunk,
+    valid_requirements,
     confirm_user_choice=False,
 ) -> dict:
     """Handle the user's choice for the diff.
@@ -405,7 +402,9 @@ def reload_tmp_merged_mod_file(tmp_merged_mod_file) -> int:
     return last_processed_line
 
 
-def merge_files(new_mods_file, final_merged_mod_file, confirm_user_choice=False) -> str:
+def merge_files(
+    new_mods_file, final_merged_mod_file, valid_requirements, confirm_user_choice=False
+) -> str:
     """Merge the contents of two text files, handling conflicts."""
     max_perf_chunk_size = 1024  # Define the chunk size for reading the files
 
@@ -481,6 +480,7 @@ def merge_files(new_mods_file, final_merged_mod_file, confirm_user_choice=False)
                     diff,
                     formatted_final_merged_mod_chunk,
                     formatted_new_mod_chunk,
+                    valid_requirements,
                     confirm_user_choice,
                 )
 
@@ -513,7 +513,7 @@ def merge_files(new_mods_file, final_merged_mod_file, confirm_user_choice=False)
 
 
 def merge_directories(
-    new_mods_dir, final_merged_mod_dir, confirm_user_choice=False
+    new_mods_dir, final_merged_mod_dir, valid_requirements, confirm_user_choice=False
 ) -> str:
     """Recursively merge the contents of two directories."""
     # Ensure the final_merged_mod directory exists
@@ -528,7 +528,10 @@ def merge_directories(
         if os.path.isdir(new_mods_item):
             # If the item is a directory, recursively merge it
             result = merge_directories(
-                new_mods_item, final_merged_mod_item, confirm_user_choice
+                new_mods_item,
+                final_merged_mod_item,
+                valid_requirements,
+                confirm_user_choice,
             )
             if result == "quit":
                 return "quit"
@@ -536,7 +539,10 @@ def merge_directories(
             # If the item is a file, handle conflicts
             if os.path.exists(final_merged_mod_item):
                 result = merge_files(
-                    new_mods_item, final_merged_mod_item, confirm_user_choice
+                    new_mods_item,
+                    final_merged_mod_item,
+                    valid_requirements,
+                    confirm_user_choice,
                 )
                 if result == "quit":
                     return "quit"
@@ -566,6 +572,9 @@ def main() -> bool:
         print("new_mods_dir and final_merged_mod_dir are required as cmd ln args.")
         return False
 
+    # Validate the requirements
+    valid_requirements = validate_requirements()
+
     # Iterate through all directories in the new_mods base directory
     for dir_name in os.listdir(args.new_mods_dir):
         new_mods_dir = os.path.join(args.new_mods_dir, dir_name)
@@ -575,7 +584,10 @@ def main() -> bool:
             and not new_mods_dir == args.final_merged_mod_dir
         ):
             result = merge_directories(
-                new_mods_dir, args.final_merged_mod_dir, args.confirm
+                new_mods_dir,
+                args.final_merged_mod_dir,
+                valid_requirements,
+                args.confirm,
             )
             if result == "quit":
                 print("Merge aborted.")

@@ -250,8 +250,10 @@ class TestMergeTool(unittest.TestCase):
     @patch("os.listdir")
     @patch("os.path.isdir")
     @patch("os.path.join", side_effect=os.path.join)
+    @patch("merge_tool.validate_requirements")
     def test_main(
         self,
+        mock_validate_requirements,
         mock_path_join,
         mock_is_dir,
         mock_list_dir,
@@ -261,6 +263,7 @@ class TestMergeTool(unittest.TestCase):
         """Test main() -> bool"""
         from merge_tool import main
 
+        mock_validate_requirements.return_value = {"code": True, "less": True}
         mock_parse_args.return_value = argparse.Namespace(
             new_mods_dir="test1",
             final_merged_mod_dir="test2",

@@ -6,9 +6,7 @@
 
 import os
 import unittest
-from unittest.mock import patch, mock_open
-
-# import pytest
+from unittest.mock import patch, mock_open, Mock
 import sys
 import argparse
 
@@ -20,9 +18,15 @@ class TestMergeTool(unittest.TestCase):
     """Functional tests for pak_merge_tool -> merge_tool.py"""
 
     # Test version_check(command) -> bool
-    def test_version_check(self):
+    @patch("subprocess.run")
+    def test_version_check(self, mock_subprocess_run):
         """Test version_check(command) -> bool"""
         from merge_tool import version_check
+
+        # Return an object with a returncode of 0
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_subprocess_run.return_value = mock_result
 
         result = version_check("code")
         assert result is True
@@ -95,7 +99,7 @@ class TestMergeTool(unittest.TestCase):
         mock_popen.assert_called_once()
 
     # Test open_files_in_vscode_compare(file1, file2) -> None
-    @patch("merge_tool.subprocess.run")
+    @patch("subprocess.run")
     def test_open_files_in_vscode_compare(self, mock_subprocess_run):
         """Test open_files_in_vscode_compare(file1, file2) -> None"""
         from merge_tool import open_files_in_vscode_compare

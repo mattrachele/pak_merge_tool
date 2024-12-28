@@ -7,7 +7,8 @@
 import os
 import unittest
 from unittest.mock import patch, mock_open
-import pytest
+
+# import pytest
 import sys
 import argparse
 
@@ -20,24 +21,27 @@ class TestMergeTool(unittest.TestCase):
 
     # Test version_check(command) -> bool
     def test_version_check(self):
+        """Test version_check(command) -> bool"""
         from merge_tool import version_check
 
         result = version_check("code")
-        assert result == True
+        assert result is True
 
     # Test validate_requirements() -> dict
     @patch("merge_tool.version_check")
     def test_validate_requirements(self, mock_version_check):
+        """Test validate_requirements() -> dict"""
         from merge_tool import validate_requirements
 
         mock_version_check.return_value = True
 
         result = validate_requirements()
-        assert result["code"] == True
-        assert result["less"] == True
+        assert result["code"] is True
+        assert result["less"] is True
 
     # Test strip_whitespace(lines) -> list
     def test_strip_whitespace(self):
+        """Test strip_whitespace(lines) -> list"""
         from merge_tool import strip_whitespace
 
         lines = ["  test  ", "  test2  "]
@@ -46,6 +50,7 @@ class TestMergeTool(unittest.TestCase):
 
     # Test filter_updated_lines(original_lines, new_lines) -> list
     def test_filter_updated_lines(self):
+        """Test filter_updated_lines(original_lines, new_lines) -> list"""
         from merge_tool import filter_updated_lines
 
         original_lines = ["test", "test2"]
@@ -57,6 +62,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("merge_tool.filter_updated_lines")
     @patch("merge_tool.input")
     def test_confirm_choice(self, mock_input, mock_filter_updated_lines):
+        """Test confirm_choice(original_lines, new_lines) -> str"""
         from merge_tool import confirm_choice
 
         mock_input.return_value = "1"
@@ -70,6 +76,7 @@ class TestMergeTool(unittest.TestCase):
     # Test view_text_with_pydoc(text) -> None
     @patch("pydoc.pager")
     def test_view_text_with_pydoc(self, mock_pager):
+        """Test view_text_with_pydoc(text) -> None"""
         from merge_tool import view_text_with_pydoc
 
         text = "test"
@@ -80,6 +87,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("subprocess.Popen")
     @patch("subprocess.Popen.communicate")
     def test_view_text_with_less(self, mock_communicate, mock_popen):
+        """Test view_text_with_less(text) -> None"""
         from merge_tool import view_text_with_less
 
         text = "test"
@@ -89,6 +97,7 @@ class TestMergeTool(unittest.TestCase):
     # Test open_files_in_vscode_compare(file1, file2) -> None
     @patch("merge_tool.subprocess.run")
     def test_open_files_in_vscode_compare(self, mock_subprocess_run):
+        """Test open_files_in_vscode_compare(file1, file2) -> None"""
         from merge_tool import open_files_in_vscode_compare
 
         file1 = "test1"
@@ -117,6 +126,7 @@ class TestMergeTool(unittest.TestCase):
         mock_confirm_choice,
         mock_input,
     ):
+        """Test choice_handler() -> dict"""
         from merge_tool import choice_handler
 
         new_mods_file = "test1"
@@ -140,6 +150,7 @@ class TestMergeTool(unittest.TestCase):
 
     # Test reload_tmp_merged_mod_file(tmp_merged_mod_file) -> int
     def test_reload_tmp_merged_mod_file(self):
+        """Test reload_tmp_merged_mod_file(tmp_merged_mod_file) -> int"""
         from merge_tool import reload_tmp_merged_mod_file
 
         tmp_merged_mod_file = "test"
@@ -162,10 +173,11 @@ class TestMergeTool(unittest.TestCase):
         mock_move,
         mock_choice_handler,
         mock_strip_whitespace,
-        mock_open,
+        mock_builtin_open,
         mock_reload_tmp_merged_mod_file,
         mock_getsize,
     ):
+        """Test merge_files(new_mods_file, final_merged_mod_file) -> str"""
         from merge_tool import merge_files
 
         new_mods_file = "test1"
@@ -204,6 +216,7 @@ class TestMergeTool(unittest.TestCase):
         mock_is_dir,
         mock_path_join,
     ):
+        """Test merge_directories(new_mods_dir, final_merged_mod_dir) -> str"""
         from merge_tool import merge_directories
 
         new_mods_dir = "test1"
@@ -234,6 +247,7 @@ class TestMergeTool(unittest.TestCase):
         mock_parse_args,
         mock_merge_directories,
     ):
+        """Test main() -> bool"""
         from merge_tool import main
 
         mock_parse_args.return_value = argparse.Namespace(
@@ -248,4 +262,4 @@ class TestMergeTool(unittest.TestCase):
         mock_is_dir.return_value = True
 
         result = main()
-        assert result == False
+        assert result is False

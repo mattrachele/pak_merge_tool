@@ -109,6 +109,181 @@ class TestMergeTool(unittest.TestCase):
         open_files_in_vscode_compare(file1, file2)
         mock_subprocess_run.assert_called_once()
 
+    # Test def disp_chunk_skip_no_changes(input_vars) -> dict
+    def test_disp_chunk_skip_no_changes(self):
+        """Test disp_chunk_skip_no_changes(input_vars) -> dict"""
+        from merge_tool import disp_chunk_skip_no_changes
+
+        input_vars = {
+            "disp_final_merged_mod_chunk": ["test1", "test2"],
+        }
+        result = disp_chunk_skip_no_changes(input_vars)
+        assert result["status"] == "pass_through"
+        assert result["processed_lines"] == ["test1", "test2"]
+
+    # Test disp_chunk_overwrite_new_changes(input_vars) -> dict
+    def test_disp_chunk_overwrite_new_changes(self):
+        """Test disp_chunk_overwrite_new_changes(input_vars) -> dict"""
+        from merge_tool import disp_chunk_overwrite_new_changes
+
+        input_vars = {
+            "disp_new_mod_chunk": ["test3", "test4"],
+        }
+        result = disp_chunk_overwrite_new_changes(input_vars)
+        assert result["status"] == "pass_through"
+        assert result["processed_lines"] == ["test3", "test4"]
+
+    # Test def disp_chunk_insert_only_new_lines(input_vars) -> dict
+    def test_disp_chunk_insert_only_new_lines(self):
+        """Test disp_chunk_insert_only_new_lines(input_vars) -> dict"""
+        from merge_tool import disp_chunk_insert_only_new_lines
+
+        input_vars = {
+            "disp_new_mod_chunk": ["test1", "test3", "test4"],
+            "disp_final_merged_mod_chunk": ["test1", "test2"],
+        }
+        result = disp_chunk_insert_only_new_lines(input_vars)
+        assert result["status"] == "pass_through"
+        assert result["processed_lines"] == ["test1", "test2", "test3", "test4"]
+
+    # Test def whole_chunk_skip_no_changes(input_vars) -> dict
+    def test_whole_chunk_skip_no_changes(self):
+        """Test whole_chunk_skip_no_changes(input_vars) -> dict"""
+        from merge_tool import whole_chunk_skip_no_changes
+
+        input_vars = {
+            "f_final_merged_mod_chunk": ["test1", "test2"],
+        }
+        result = whole_chunk_skip_no_changes(input_vars)
+        assert result["status"] == "return_continue"
+        assert result["processed_lines"] == ["test1", "test2"]
+
+    # Test def whole_chunk_overwrite_new_changes(input_vars) -> dict
+    def test_whole_chunk_overwrite_new_changes(self):
+        """Test whole_chunk_overwrite_new_changes(input_vars) -> dict"""
+        from merge_tool import whole_chunk_overwrite_new_changes
+
+        input_vars = {
+            "f_new_mod_chunk": ["test3", "test4"],
+        }
+        result = whole_chunk_overwrite_new_changes(input_vars)
+        assert result["status"] == "return_continue"
+        assert result["processed_lines"] == ["test3", "test4"]
+
+    # Test def whole_chunk_insert_only_new_lines(input_vars) -> dict
+    def test_whole_chunk_insert_only_new_lines(self):
+        """Test whole_chunk_insert_only_new_lines(input_vars) -> dict"""
+        from merge_tool import whole_chunk_insert_only_new_lines
+
+        input_vars = {
+            "f_new_mod_chunk": ["test1", "test3", "test4"],
+            "f_final_merged_mod_chunk": ["test1", "test2"],
+        }
+        result = whole_chunk_insert_only_new_lines(input_vars)
+        assert result["status"] == "return_continue"
+        assert result["processed_lines"] == ["test1", "test2", "test3", "test4"]
+
+    # Test def whole_chunk_view_diff_less(input_vars) -> dict
+    @patch("merge_tool.view_text_with_less")
+    def test_whole_chunk_view_diff_less(self, mock_view_text_with_less):
+        """Test whole_chunk_view_diff_less(input_vars) -> dict"""
+        from merge_tool import whole_chunk_view_diff_less
+
+        input_vars = {
+            "diff_lines_list": ["test1", "test2"],
+        }
+        result = whole_chunk_view_diff_less(input_vars)
+        assert result["status"] == "continue"
+        mock_view_text_with_less.assert_called_once()
+
+    # Test def whole_file_view_temp_merged_mod_less(input_vars) -> dict
+    @patch("merge_tool.view_text_with_less")
+    def test_whole_file_view_temp_merged_mod_less(self, mock_view_text_with_less):
+        """Test whole_file_view_temp_merged_mod_less(input_vars) -> dict"""
+        from merge_tool import whole_file_view_temp_merged_mod_less
+
+        input_vars = {
+            "tmp_merged_mod_lines": ["test1", "test2"],
+        }
+        result = whole_file_view_temp_merged_mod_less(input_vars)
+        assert result["status"] == "continue"
+        mock_view_text_with_less.assert_called_once()
+
+    # Test def whole_chunk_view_diff_pydoc(input_vars) -> dict
+    @patch("merge_tool.view_text_with_pydoc")
+    def test_whole_chunk_view_diff_pydoc(self, mock_view_text_with_pydoc):
+        """Test whole_chunk_view_diff_pydoc(input_vars) -> dict"""
+        from merge_tool import whole_chunk_view_diff_pydoc
+
+        input_vars = {
+            "diff_lines_list": ["test1", "test2"],
+        }
+        result = whole_chunk_view_diff_pydoc(input_vars)
+        assert result["status"] == "continue"
+        mock_view_text_with_pydoc.assert_called_once()
+
+    # Test def whole_file_view_temp_merged_mod_pydoc(input_vars) -> dict
+    @patch("merge_tool.view_text_with_pydoc")
+    def test_whole_file_view_temp_merged_mod_pydoc(self, mock_view_text_with_pydoc):
+        """Test whole_file_view_temp_merged_mod_pydoc(input_vars) -> dict"""
+        from merge_tool import whole_file_view_temp_merged_mod_pydoc
+
+        input_vars = {
+            "tmp_merged_mod_lines": ["test1", "test2"],
+        }
+        result = whole_file_view_temp_merged_mod_pydoc(input_vars)
+        assert result["status"] == "continue"
+        mock_view_text_with_pydoc.assert_called_once()
+
+    # Test def whole_file_open_diff_vs_code(input_vars) -> dict
+    @patch("merge_tool.open_files_in_vscode_compare")
+    def test_whole_file_open_diff_vs_code(self, mock_open_files_in_vscode_compare):
+        """Test whole_file_open_diff_vs_code(input_vars) -> dict"""
+        from merge_tool import whole_file_open_diff_vs_code
+
+        input_vars = {
+            "new_mods_file": "test1",
+            "final_merged_mod_file": "test2",
+        }
+        result = whole_file_open_diff_vs_code(input_vars)
+        assert result["status"] == "continue"
+        mock_open_files_in_vscode_compare.assert_called_once()
+
+    # Test def whole_file_open_temp_merged_mod_vs_code(input_vars) -> dict
+    @patch("merge_tool.open_files_in_vscode_compare")
+    def test_whole_file_open_temp_merged_mod_vs_code(
+        self, mock_open_files_in_vscode_compare
+    ):
+        """Test whole_file_open_temp_merged_mod_vs_code(input_vars) -> dict"""
+        from merge_tool import whole_file_open_temp_merged_mod_vs_code
+
+        input_vars = {
+            "final_merged_mod_file": "test2",
+        }
+        result = whole_file_open_temp_merged_mod_vs_code(input_vars)
+        assert result["status"] == "continue"
+        mock_open_files_in_vscode_compare.assert_called_once()
+
+    # Test def quit_save(input_vars) -> dict
+    def test_quit_save(self):
+        """Test quit_save(input_vars) -> dict"""
+        from merge_tool import quit_save
+
+        input_vars = {
+            "tmp_merged_mod_lines": ["test1", "test2"],
+        }
+        result = quit_save(input_vars)
+        assert result["status"] == "quit-save"
+
+    # Test def quit_out(input_vars) -> dict
+    def test_quit_out(self):
+        """Test quit_out(input_vars) -> dict"""
+        from merge_tool import quit_out
+
+        input_vars = {}
+        result = quit_out(input_vars)
+        assert result["status"] == "quit"
+
     # Test choice_handler(
     #     new_mods_file,
     #     final_merged_mod_file,
@@ -123,8 +298,36 @@ class TestMergeTool(unittest.TestCase):
     @patch("merge_tool.view_text_with_less")
     @patch("merge_tool.view_text_with_pydoc")
     @patch("merge_tool.open_files_in_vscode_compare")
+    @patch("merge_tool.disp_chunk_skip_no_changes")
+    @patch("merge_tool.disp_chunk_overwrite_new_changes")
+    @patch("merge_tool.disp_chunk_insert_only_new_lines")
+    @patch("merge_tool.whole_chunk_skip_no_changes")
+    @patch("merge_tool.whole_chunk_overwrite_new_changes")
+    @patch("merge_tool.whole_chunk_insert_only_new_lines")
+    @patch("merge_tool.whole_chunk_view_diff_less")
+    @patch("merge_tool.whole_file_view_temp_merged_mod_less")
+    @patch("merge_tool.whole_chunk_view_diff_pydoc")
+    @patch("merge_tool.whole_file_view_temp_merged_mod_pydoc")
+    @patch("merge_tool.whole_file_open_diff_vs_code")
+    @patch("merge_tool.whole_file_open_temp_merged_mod_vs_code")
+    @patch("merge_tool.quit_save")
+    @patch("merge_tool.quit_out")
     def test_choice_handler(
         self,
+        mock_quit_out,
+        mock_quit_save,
+        mock_whole_file_open_temp_merged_mod_vs_code,
+        mock_whole_file_open_diff_vs_code,
+        mock_whole_file_view_temp_merged_mod_pydoc,
+        mock_whole_chunk_view_diff_pydoc,
+        mock_whole_file_view_temp_merged_mod_less,
+        mock_whole_chunk_view_diff_less,
+        mock_whole_chunk_insert_only_new_lines,
+        mock_whole_chunk_overwrite_new_changes,
+        mock_whole_chunk_skip_no_changes,
+        mock_disp_chunk_insert_only_new_lines,
+        mock_disp_chunk_overwrite_new_changes,
+        mock_disp_chunk_skip_no_changes,
         mock_open_files_in_vscode_compare,
         mock_view_text_with_pydoc,
         mock_view_text_with_less,
@@ -143,6 +346,10 @@ class TestMergeTool(unittest.TestCase):
 
         mock_input.return_value = "1"
         mock_confirm_choice.return_value = "1"
+        mock_disp_chunk_skip_no_changes.return_value = {
+            "status": "pass_through",
+            "processed_lines": ["test1", "test2"],
+        }
 
         result = choice_handler(
             new_mods_file,

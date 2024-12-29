@@ -4,4 +4,4 @@ init-hook='import sys, os; sys.path.insert(0, os.path.abspath("."))'
 
 [MESSAGES CONTROL]
 # Disable the message about missing module docstring
-disable=C0114,C0415,R0913,R0917,C0301,R0914,R0911,R0912,R0915,W0613
+disable=C0114,C0415,R0913,R0917,C0301,R0914,R0911,R0912,R0915,W0613,W1203

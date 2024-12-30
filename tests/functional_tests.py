@@ -94,7 +94,7 @@ class TestMergeTool(unittest.TestCase):
         """Test view_text_with_less(text) -> None"""
         from merge_tool import view_text_with_less
 
-        text = "test"
+        text = ["test"]
         view_text_with_less(text)
         mock_popen.assert_called_once()
 
@@ -108,6 +108,17 @@ class TestMergeTool(unittest.TestCase):
         file2 = "test2"
         open_files_in_vscode_compare(file1, file2)
         mock_subprocess_run.assert_called_once()
+
+    # Test def disp_diff_re_print(input_vars) -> dict:
+    def test_disp_diff_re_print(self):
+        """Test disp_diff_re_print(input_vars) -> dict"""
+        from merge_tool import disp_diff_re_print
+
+        input_vars = {
+            "disp_diff_chunk": ["@@ -1,2 +1,2 @@\n", "-test3\n", "+test2\n", "test4\n"],
+        }
+        result = disp_diff_re_print(input_vars)
+        assert result["status"] == "continue"
 
     # Test def disp_chunk_skip_no_changes(input_vars) -> dict
     def test_disp_chunk_skip_no_changes(self):
@@ -133,18 +144,22 @@ class TestMergeTool(unittest.TestCase):
         assert result["status"] == "pass_through"
         assert result["processed_lines"] == ["test3", "test4"]
 
-    # Test def disp_chunk_insert_only_new_lines(input_vars) -> dict
-    def test_disp_chunk_insert_only_new_lines(self):
-        """Test disp_chunk_insert_only_new_lines(input_vars) -> dict"""
-        from merge_tool import disp_chunk_insert_only_new_lines
+    # Test def disp_chunk_save_merged_diff(input_vars) -> dict
+    def test_disp_chunk_save_merged_diff(self):
+        """Test disp_chunk_save_merged_diff(input_vars) -> dict"""
+        from merge_tool import disp_chunk_save_merged_diff
 
         input_vars = {
-            "disp_new_mod_chunk": ["test1", "test3", "test4"],
-            "disp_final_merged_mod_chunk": ["test1", "test2"],
+            "disp_diff_chunk": [
+                "@@ -1,2 +1,2 @@\n",
+                "-test3\n",
+                "+test2\n",
+                " test4\n",
+            ],
         }
-        result = disp_chunk_insert_only_new_lines(input_vars)
+        result = disp_chunk_save_merged_diff(input_vars)
         assert result["status"] == "pass_through"
-        assert result["processed_lines"] == ["test1", "test2", "test3", "test4"]
+        assert result["processed_lines"] == ["test3\n", "test2\n", "test4\n"]
 
     # Test def whole_chunk_skip_no_changes(input_vars) -> dict
     def test_whole_chunk_skip_no_changes(self):
@@ -170,18 +185,24 @@ class TestMergeTool(unittest.TestCase):
         assert result["status"] == "return_continue"
         assert result["processed_lines"] == ["test3", "test4"]
 
-    # Test def whole_chunk_insert_only_new_lines(input_vars) -> dict
-    def test_whole_chunk_insert_only_new_lines(self):
-        """Test whole_chunk_insert_only_new_lines(input_vars) -> dict"""
-        from merge_tool import whole_chunk_insert_only_new_lines
+    # Test def whole_chunk_save_merged_diff(input_vars) -> dict
+    def test_whole_chunk_save_merged_diff(self):
+        """Test whole_chunk_save_merged_diff(input_vars) -> dict"""
+        from merge_tool import whole_chunk_save_merged_diff
 
         input_vars = {
-            "f_new_mod_chunk": ["test1", "test3", "test4"],
-            "f_final_merged_mod_chunk": ["test1", "test2"],
+            "f_final_merged_mod_chunk": ["test3", "test4"],
+            "display_chunk_array": [[1, 2, 1, 2, 1, 4]],
+            "diff_lines_list": [
+                "@@ -1,2 +1,2 @@\n",
+                "-test3\n",
+                "+test2\n",
+                " test4\n",
+            ],
         }
-        result = whole_chunk_insert_only_new_lines(input_vars)
+        result = whole_chunk_save_merged_diff(input_vars)
         assert result["status"] == "return_continue"
-        assert result["processed_lines"] == ["test1", "test2", "test3", "test4"]
+        assert result["processed_lines"] == ["test3\n", "test2\n", "test4\n"]
 
     # Test def whole_chunk_view_diff_less(input_vars) -> dict
     @patch("merge_tool.view_text_with_less")
@@ -197,13 +218,16 @@ class TestMergeTool(unittest.TestCase):
         mock_view_text_with_less.assert_called_once()
 
     # Test def whole_file_view_temp_merged_mod_less(input_vars) -> dict
+    @patch("builtins.open", new_callable=mock_open)
     @patch("merge_tool.view_text_with_less")
-    def test_whole_file_view_temp_merged_mod_less(self, mock_view_text_with_less):
+    def test_whole_file_view_temp_merged_mod_less(
+        self, mock_view_text_with_less, mock_open_var
+    ):
         """Test whole_file_view_temp_merged_mod_less(input_vars) -> dict"""
         from merge_tool import whole_file_view_temp_merged_mod_less
 
         input_vars = {
-            "tmp_merged_mod_lines": ["test1", "test2"],
+            "temp_merged_mod_file": "test1",
         }
         result = whole_file_view_temp_merged_mod_less(input_vars)
         assert result["status"] == "continue"
@@ -223,13 +247,16 @@ class TestMergeTool(unittest.TestCase):
         mock_view_text_with_pydoc.assert_called_once()
 
     # Test def whole_file_view_temp_merged_mod_pydoc(input_vars) -> dict
+    @patch("builtins.open", new_callable=mock_open)
     @patch("merge_tool.view_text_with_pydoc")
-    def test_whole_file_view_temp_merged_mod_pydoc(self, mock_view_text_with_pydoc):
+    def test_whole_file_view_temp_merged_mod_pydoc(
+        self, mock_view_text_with_pydoc, mock_open_var
+    ):
         """Test whole_file_view_temp_merged_mod_pydoc(input_vars) -> dict"""
         from merge_tool import whole_file_view_temp_merged_mod_pydoc
 
         input_vars = {
-            "tmp_merged_mod_lines": ["test1", "test2"],
+            "temp_merged_mod_file": "test1",
         }
         result = whole_file_view_temp_merged_mod_pydoc(input_vars)
         assert result["status"] == "continue"
@@ -284,6 +311,53 @@ class TestMergeTool(unittest.TestCase):
         result = quit_out(input_vars)
         assert result["status"] == "quit"
 
+    # Test load_choice_functions(valid_requirements) -> dict:
+    def test_load_choice_functions(self):
+        """Test load_choice_functions(valid_requirements) -> dict"""
+        from merge_tool import load_choice_functions
+
+        valid_requirements = {"code": True, "less": True}
+        result = load_choice_functions(valid_requirements)
+
+        assert result["1"]["disp_diff_re_print"] == "Re-print the Display Diff"
+        assert (
+            result["2"]["disp_chunk_skip_no_changes"]
+            == "Display Chunk: Skip - Make No Changes"
+        )
+        assert (
+            result["3"]["disp_chunk_overwrite_new_changes"]
+            == "Display Chunk: Overwrite with New Changes"
+        )
+        assert (
+            result["4"]["disp_chunk_save_merged_diff"] == "Display Chunk: Merge Changes"
+        )
+        assert (
+            result["5"]["whole_chunk_skip_no_changes"]
+            == "Whole Chunk: Skip - Make No Changes"
+        )
+        assert (
+            result["6"]["whole_chunk_overwrite_new_changes"]
+            == "Whole Chunk: Overwrite with New Changes"
+        )
+        assert (
+            result["7"]["whole_chunk_save_merged_diff"] == "Whole Chunk: Merge Changes"
+        )
+        assert (
+            result["8"]["whole_chunk_view_diff_less"] == "Whole Chunk: View Diff in CLI"
+        )
+        assert (
+            result["9"]["whole_file_view_temp_merged_mod_less"]
+            == "Whole File: View Temp Merged Mod in CLI"
+        )
+        assert (
+            result["10"]["whole_file_open_diff_vs_code"]
+            == "Whole File: Open Diff in VS Code"
+        )
+        assert (
+            result["11"]["whole_file_open_temp_merged_mod_vs_code"]
+            == "Whole File: Open Temp Merged Mod in VS Code"
+        )
+
     # Test choice_handler(
     #     new_mods_file,
     #     final_merged_mod_file,
@@ -300,10 +374,10 @@ class TestMergeTool(unittest.TestCase):
     @patch("merge_tool.open_files_in_vscode_compare")
     @patch("merge_tool.disp_chunk_skip_no_changes")
     @patch("merge_tool.disp_chunk_overwrite_new_changes")
-    @patch("merge_tool.disp_chunk_insert_only_new_lines")
+    @patch("merge_tool.disp_chunk_save_merged_diff")
     @patch("merge_tool.whole_chunk_skip_no_changes")
     @patch("merge_tool.whole_chunk_overwrite_new_changes")
-    @patch("merge_tool.whole_chunk_insert_only_new_lines")
+    @patch("merge_tool.whole_chunk_save_merged_diff")
     @patch("merge_tool.whole_chunk_view_diff_less")
     @patch("merge_tool.whole_file_view_temp_merged_mod_less")
     @patch("merge_tool.whole_chunk_view_diff_pydoc")
@@ -322,10 +396,10 @@ class TestMergeTool(unittest.TestCase):
         mock_whole_chunk_view_diff_pydoc,
         mock_whole_file_view_temp_merged_mod_less,
         mock_whole_chunk_view_diff_less,
-        mock_whole_chunk_insert_only_new_lines,
+        mock_whole_chunk_save_merged_diff,
         mock_whole_chunk_overwrite_new_changes,
         mock_whole_chunk_skip_no_changes,
-        mock_disp_chunk_insert_only_new_lines,
+        mock_disp_chunk_save_merged_diff,
         mock_disp_chunk_overwrite_new_changes,
         mock_disp_chunk_skip_no_changes,
         mock_open_files_in_vscode_compare,
@@ -343,12 +417,15 @@ class TestMergeTool(unittest.TestCase):
         f_final_merged_mod_chunk = ["test3", "test4"]
         f_new_mod_chunk = ["test2", "test4"]
         valid_requirements = {"code": True, "less": True}
+        temp_merged_mod_file = "test3"
+        last_display_diff = ""
+        last_user_choice = "2"
 
-        mock_input.return_value = "1"
-        mock_confirm_choice.return_value = "1"
+        mock_input.return_value = "2"
+        mock_confirm_choice.return_value = "2"
         mock_disp_chunk_skip_no_changes.return_value = {
             "status": "pass_through",
-            "processed_lines": ["test1", "test2"],
+            "processed_lines": ["test3", "test4"],
         }
 
         result = choice_handler(
@@ -358,23 +435,46 @@ class TestMergeTool(unittest.TestCase):
             f_final_merged_mod_chunk,
             f_new_mod_chunk,
             valid_requirements,
+            temp_merged_mod_file,
+            last_display_diff,
+            last_user_choice,
         )
         assert result["status"] == "continue"
         assert result["processed_lines"] == ["test3", "test4"]
 
-    # Test reload_tmp_merged_mod_file(tmp_merged_mod_file) -> int
-    def test_reload_tmp_merged_mod_file(self):
-        """Test reload_tmp_merged_mod_file(tmp_merged_mod_file) -> int"""
-        from merge_tool import reload_tmp_merged_mod_file
+    # Test reload_temp_merged_mod_file(tmp_merged_mod_file) -> int
+    def test_reload_temp_merged_mod_file(self):
+        """Test reload_temp_merged_mod_file(tmp_merged_mod_file) -> int"""
+        from merge_tool import reload_temp_merged_mod_file
 
         tmp_merged_mod_file = "test"
-        result = reload_tmp_merged_mod_file(tmp_merged_mod_file)
+        result = reload_temp_merged_mod_file(tmp_merged_mod_file)
         assert result == 0
+
+    # Test def duplicate_line_check(temp_merged_mod_file, new_tmp_merged_mod_lines, perf_chunk, final_perf_chunk_sizes) -> list:
+    @patch("builtins.open", new_callable=mock_open)
+    def test_duplicate_line_check(self, mock_open_var):
+        """Test duplicate_line_check(temp_merged_mod_file, new_tmp_merged_mod_lines, perf_chunk, final_perf_chunk_sizes) -> list"""
+        from merge_tool import duplicate_line_check
+
+        temp_merged_mod_file = "test"
+        new_tmp_merged_mod_lines = ["test1", "test2"]
+        perf_chunk = 1  # Change to 2 for further testing
+        final_perf_chunk_sizes = [1, 2]
+
+        result = duplicate_line_check(
+            temp_merged_mod_file,
+            new_tmp_merged_mod_lines,
+            perf_chunk,
+            final_perf_chunk_sizes,
+        )
+        assert result == ["test1", "test2"]
 
     # Test merge_files(new_mods_file, final_merged_mod_file, valid_requirements) -> str
     @patch("os.path.getsize")
-    @patch("merge_tool.reload_tmp_merged_mod_file")
+    @patch("merge_tool.reload_temp_merged_mod_file")
     @patch("builtins.open", new_callable=mock_open)
+    @patch("json.loads")
     @patch("merge_tool.strip_whitespace")
     @patch("merge_tool.choice_handler")
     @patch("shutil.move")
@@ -387,8 +487,9 @@ class TestMergeTool(unittest.TestCase):
         mock_move,
         mock_choice_handler,
         mock_strip_whitespace,
+        mock_json_loads,
         mock_builtin_open,
-        mock_reload_tmp_merged_mod_file,
+        mock_reload_temp_merged_mod_file,
         mock_getsize,
     ):
         """Test merge_files(new_mods_file, final_merged_mod_file) -> str"""
@@ -399,12 +500,13 @@ class TestMergeTool(unittest.TestCase):
         valid_requirements = {"code": True, "less": True}
 
         mock_getsize.return_value = 0
-        mock_reload_tmp_merged_mod_file.return_value = 0
+        mock_reload_temp_merged_mod_file.return_value = 0
         mock_strip_whitespace.return_value = ["test"]
         mock_choice_handler.return_value = {
             "status": "continue",
             "processed_lines": ["test"],
         }
+        mock_json_loads.return_value = {"test": "test"}
         mock_exists.return_value = True
         mock_move.return_value = None
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Version 0.1.3
+# Version 0.2.0
 
 """Tool to merge Stalker 2 mod pak files into a single pak file.
     Most of the files in the pak files are text files, so the tool
@@ -124,22 +124,25 @@ def confirm_choice(original_lines, new_lines) -> str:
 
 def view_text_with_pydoc(text) -> None:
     """View the contents of a text using pydoc."""
+    # NOTE: Adding color for pydoc adds color to more than just the text provided
     pydoc_txt = "".join(text)
     pydoc.pager(pydoc_txt)
 
 
 def view_text_with_less(text) -> None:
     """View the contents of a text using less."""
+    # Use a copy of the text to avoid modifying the original text
+    color_text = text.copy()
     # Add color to the text
-    for i, line in enumerate(text):
+    for i, line in enumerate(color_text):
         if line.startswith("+"):
-            text[i] = Fore.GREEN + line
+            color_text[i] = Fore.GREEN + line
         elif line.startswith("-"):
-            text[i] = Fore.RED + line
+            color_text[i] = Fore.RED + line
         elif line.startswith("@"):
-            text[i] = Fore.CYAN + line
+            color_text[i] = Fore.CYAN + line
 
-    less_txt = "".join(text)
+    less_txt = "".join(color_text)
     with subprocess.Popen(["less", "-R"], stdin=subprocess.PIPE) as process:
         process.communicate(input=less_txt.encode("utf-8"))
 
@@ -154,6 +157,25 @@ def open_files_in_vscode_compare(file1, file2) -> None:
     abs_file2 = os.path.abspath(file2)
 
     subprocess.run(["code", "--diff", abs_file1, abs_file2], shell=True, check=True)
+
+
+def disp_diff_re_print(input_vars) -> dict:
+    """Re-print the display diff."""
+    disp_diff_chunk = input_vars["disp_diff_chunk"]
+
+    for line in disp_diff_chunk:
+        if line.startswith("+"):
+            logger.info("%s%s", Fore.GREEN, line.strip())
+        elif line.startswith("-"):
+            logger.info("%s%s", Fore.RED, line.strip())
+        elif line.startswith("@"):
+            logger.info("%s%s", Fore.CYAN, line.strip())
+        else:
+            logger.info("%s", line.strip())
+
+    return {
+        "status": "continue",
+    }
 
 
 def disp_chunk_skip_no_changes(input_vars) -> dict:
@@ -283,7 +305,10 @@ def whole_chunk_view_diff_less(input_vars) -> dict:
 
 def whole_file_view_temp_merged_mod_less(input_vars) -> dict:
     """View Temp Merged Mod in less"""
-    tmp_merged_mod_lines = input_vars["tmp_merged_mod_lines"]
+    temp_merged_mod_file = input_vars["temp_merged_mod_file"]
+    tmp_merged_mod_lines = []
+    with open(temp_merged_mod_file, "r", encoding="utf-8") as tmp_merged_mod:
+        tmp_merged_mod_lines = tmp_merged_mod.readlines()
     view_text_with_less(tmp_merged_mod_lines)
     return {
         "status": "continue",
@@ -301,7 +326,10 @@ def whole_chunk_view_diff_pydoc(input_vars) -> dict:
 
 def whole_file_view_temp_merged_mod_pydoc(input_vars) -> dict:
     """View Temp Merged Mod in pydoc"""
-    tmp_merged_mod_lines = input_vars["tmp_merged_mod_lines"]
+    temp_merged_mod_file = input_vars["temp_merged_mod_file"]
+    tmp_merged_mod_lines = []
+    with open(temp_merged_mod_file, "r", encoding="utf-8") as tmp_merged_mod:
+        tmp_merged_mod_lines = tmp_merged_mod.readlines()
     view_text_with_pydoc(tmp_merged_mod_lines)
     return {
         "status": "continue",
@@ -342,20 +370,22 @@ def quit_out(input_vars) -> dict:
 
 
 def load_choice_functions(valid_requirements) -> dict:
+    """Load the choice functions based on the valid requirements."""
     # Define the choices for the user
     choice_number = 1
     choice_functions = {}
     default_choice_functions = [
+        {"disp_diff_re_print": "Re-print the Display Diff"},
         {"disp_chunk_skip_no_changes": "Display Chunk: Skip - Make No Changes"},
         {
             "disp_chunk_overwrite_new_changes": "Display Chunk: Overwrite with New Changes"
         },
-        {"disp_chunk_save_merged_diff": "Display Chunk: Insert only New Lines"},
+        {"disp_chunk_save_merged_diff": "Display Chunk: Merge Changes"},
         {"whole_chunk_skip_no_changes": "Whole Chunk: Skip - Make No Changes"},
         {
             "whole_chunk_overwrite_new_changes": "Whole Chunk: Overwrite with New Changes"
         },
-        {"whole_chunk_save_merged_diff": "Whole Chunk: Insert only New Lines"},
+        {"whole_chunk_save_merged_diff": "Whole Chunk: Merge Changes"},
     ]
 
     for choice_function in default_choice_functions:
@@ -402,6 +432,7 @@ def choice_handler(
     f_final_merged_mod_chunk,
     f_new_mod_chunk,
     valid_requirements,
+    temp_merged_mod_file,
     last_display_diff,
     last_user_choice,
     confirm_user_choice=False,
@@ -565,7 +596,6 @@ def choice_handler(
                     "last_user_choice": last_user_choice,
                 }
             elif result["status"] == "continue":
-                # FIXME: Seems using functions that return continue add weird text to the final merged mod file
                 continue
 
             tmp_merged_mod_lines.extend(new_lines)
@@ -622,6 +652,7 @@ def choice_handler(
                 "f_new_mod_chunk": f_new_mod_chunk,
                 "diff_lines_list": diff_lines_list,
                 "tmp_merged_mod_lines": tmp_merged_mod_lines,
+                "temp_merged_mod_file": temp_merged_mod_file,
                 "final_merged_mod_start_line": final_merged_mod_start_line,
                 "final_merged_mod_length": final_merged_mod_length,
                 "valid_requirements": valid_requirements,
@@ -643,7 +674,6 @@ def choice_handler(
                     "last_user_choice": user_choice,
                 }
             elif result["status"] == "continue":
-                # FIXME: Seems using functions that return continue add weird text to the final merged mod file
                 continue
             elif result["status"] == "quit-save":
                 return {
@@ -697,12 +727,12 @@ def choice_handler(
     }
 
 
-def reload_tmp_merged_mod_file(tmp_merged_mod_file) -> int:
+def reload_temp_merged_mod_file(temp_merged_mod_file) -> int:
     """Reload the temporary merged mod file and return the last processed line."""
-    if not os.path.exists(tmp_merged_mod_file):
+    if not os.path.exists(temp_merged_mod_file):
         return 0
 
-    with open(tmp_merged_mod_file, "r", encoding="utf-8") as tmp_merged_mod:
+    with open(temp_merged_mod_file, "r", encoding="utf-8") as tmp_merged_mod:
         lines = tmp_merged_mod.readlines()
         last_processed_line = len(lines)
 
@@ -710,7 +740,7 @@ def reload_tmp_merged_mod_file(tmp_merged_mod_file) -> int:
 
 
 def duplicate_line_check(
-    tmp_merged_mod_file, new_tmp_merged_mod_lines, perf_chunk, final_perf_chunk_sizes
+    temp_merged_mod_file, new_tmp_merged_mod_lines, perf_chunk, final_perf_chunk_sizes
 ) -> list:
     """Check for duplicate lines in the temporary merged mod file."""
     if perf_chunk == 1:
@@ -723,7 +753,7 @@ def duplicate_line_check(
         last_perf_chunk_start_line = sum(final_perf_chunk_sizes[:-1])
         last_perf_chunk_end_line = sum(final_perf_chunk_sizes)
 
-        with open(tmp_merged_mod_file, "r", encoding="utf-8") as tmp_merged_mod:
+        with open(temp_merged_mod_file, "r", encoding="utf-8") as tmp_merged_mod:
             for i, line in enumerate(tmp_merged_mod):
                 if last_perf_chunk_start_line <= i < last_perf_chunk_end_line:
                     last_perf_chunk_lines.append(line.strip())
@@ -763,7 +793,7 @@ def duplicate_line_check(
                             recent_dup_lines += 1
 
                     if recent_dup_lines < 2:
-                        logger.debug(f"Adding duplicate lines to cleansed lines.")
+                        logger.debug("Adding duplicate lines to cleansed lines.")
                         cleansed_lines.extend(tmp_dup_lines)
 
                     tmp_dup_lines = []
@@ -779,7 +809,7 @@ def merge_files(
     """Merge the contents of two text files, handling conflicts."""
     max_perf_chunk_size = 1024  # Define the chunk size for reading the files
     perf_chunk = 0  # Initialize the performance chunk counter
-    quit_out = False
+    quit_out_bool = False
     final_perf_chunk_sizes = []
     last_display_diff = ""
     last_user_choice = 0
@@ -788,19 +818,16 @@ def merge_files(
 
     # Reload the perf_chunk_sizes_file to get the final_perf_chunk_sizes
     if os.path.exists(perf_chunk_sizes_file):
-        with open(perf_chunk_sizes_file, "r") as f:
+        with open(perf_chunk_sizes_file, "r", encoding="utf-8") as f:
             final_perf_chunk_sizes = json.loads(f.read())
 
     logger.info(f"\n\tMrg: {new_mods_file}\n\tNew: {final_merged_mod_file}")
-
-    new_mod_size = os.path.getsize(new_mods_file)
-    # final_merged_mod_size = os.path.getsize(final_merged_mod_file)
     start_time = time.time()
 
     # Create a temporary file to store the merged contents
     temp_merged_mod_file = final_merged_mod_file + ".tmp"
     # Check if the temporary file exists and reload the last processed line
-    last_processed_line = reload_tmp_merged_mod_file(temp_merged_mod_file)
+    last_processed_line = reload_temp_merged_mod_file(temp_merged_mod_file)
 
     with open(new_mods_file, "r", encoding="utf-8") as new_mod, open(
         final_merged_mod_file, "r", encoding="utf-8"
@@ -859,6 +886,7 @@ def merge_files(
                 formatted_final_merged_mod_chunk,
                 formatted_new_mod_chunk,
                 valid_requirements,
+                temp_merged_mod_file,
                 last_display_diff,
                 last_user_choice,
                 confirm_user_choice,
@@ -876,13 +904,13 @@ def merge_files(
                 temp_merged_mod.writelines(cleansed_lines)
 
                 # Write final_perf_chunk_sizes to a file to track the chunk sizes
-                with open(perf_chunk_sizes_file, "w") as f:
+                with open(perf_chunk_sizes_file, "w", encoding="utf-8") as f:
                     f.write(json.dumps(final_perf_chunk_sizes))
 
                 return "quit"
 
             if choice["status"] == "quit":
-                quit_out = True
+                quit_out_bool = True
                 break
 
             # Scan temp lines for duplicate lines caused by matching lines crossing over chunks
@@ -900,7 +928,7 @@ def merge_files(
             temp_merged_mod.writelines(cleansed_lines)
             temp_merged_mod.flush()  # Flush the buffer to write the lines to the file
 
-    if not quit_out:
+    if not quit_out_bool:
         # Move the temporary file to the final_merged_mod_file
         shutil.move(temp_merged_mod_file, final_merged_mod_file)
 
@@ -916,7 +944,7 @@ def merge_files(
     elapsed_time = end_time - start_time
     logger.info(f"Processing time: {elapsed_time:.2f} seconds\n")
 
-    if quit_out:
+    if quit_out_bool:
         return "quit"
 
     return "continue"

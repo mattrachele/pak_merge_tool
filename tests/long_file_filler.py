@@ -15,12 +15,13 @@ def fill_file_with_line_numbers(file_path, num_lines):
     :param file_path: Path to the file to be filled.
     :param num_lines: Number of lines to write to the file.
     """
-    with open(file_path, "w") as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         for i in range(1, num_lines + 1):
             file.write(f"line{i}\n")
 
 
 def main():
+    """Main function for the script."""
     import argparse
 
     parser = argparse.ArgumentParser(

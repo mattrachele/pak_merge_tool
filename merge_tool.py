@@ -22,7 +22,6 @@
 # TODO: Update to allow usage with other editors
 # TODO: Add a comment to the merged file with the name of the mod that the code came from with a date and version number
 # TODO: Add support for version checking to display version differences and check for lines removed in newer versions
-# TODO: Add handling for utoc and ucas files
 
 import os
 import shutil
@@ -177,9 +176,6 @@ def disp_chunk_overwrite_new_changes(input_vars) -> dict:
 
 def disp_chunk_save_merged_diff(input_vars) -> dict:
     """Merge the chunks by appending non-duplicate lines from new_mods to final_merged_mod"""
-    # TODO: Test then remove these input_vars
-    # disp_final_merged_mod_chunk = input_vars["disp_final_merged_mod_chunk"]
-    # disp_new_mod_chunk = input_vars["disp_new_mod_chunk"]
     disp_diff_chunk = input_vars["disp_diff_chunk"]
     merged_lines = []
 
@@ -263,7 +259,6 @@ def whole_chunk_save_merged_diff(input_vars) -> dict:
             final_merged_mod_start_line + final_merged_mod_length
         )
 
-    # FIXME: Add this handling to main choice_handler loop
     # Add the last matching lines to the merged chunk
     tmp_matching_lines = f_final_merged_mod_chunk[
         final_merged_mod_current_process_line:
@@ -346,6 +341,60 @@ def quit_out(input_vars) -> dict:
     return {"status": "quit"}
 
 
+def load_choice_functions(valid_requirements) -> dict:
+    # Define the choices for the user
+    choice_number = 1
+    choice_functions = {}
+    default_choice_functions = [
+        {"disp_chunk_skip_no_changes": "Display Chunk: Skip - Make No Changes"},
+        {
+            "disp_chunk_overwrite_new_changes": "Display Chunk: Overwrite with New Changes"
+        },
+        {"disp_chunk_save_merged_diff": "Display Chunk: Insert only New Lines"},
+        {"whole_chunk_skip_no_changes": "Whole Chunk: Skip - Make No Changes"},
+        {
+            "whole_chunk_overwrite_new_changes": "Whole Chunk: Overwrite with New Changes"
+        },
+        {"whole_chunk_save_merged_diff": "Whole Chunk: Insert only New Lines"},
+    ]
+
+    for choice_function in default_choice_functions:
+        choice_functions[str(choice_number)] = choice_function
+        choice_number += 1
+
+    if valid_requirements["less"]:
+        choice_functions[str(choice_number)] = {
+            "whole_chunk_view_diff_less": "Whole Chunk: View Diff in CLI"
+        }
+        choice_number += 1
+        choice_functions[str(choice_number)] = {
+            "whole_file_view_temp_merged_mod_less": "Whole File: View Temp Merged Mod in CLI"
+        }
+        choice_number += 1
+    else:
+        logger.info("less is not available using pydoc instead.")
+        choice_functions[str(choice_number)] = {
+            "whole_chunk_view_diff_pydoc": "Whole Chunk: View Diff in CLI"
+        }
+        choice_number += 1
+        choice_functions[str(choice_number)] = {
+            "whole_file_view_temp_merged_mod_pydoc": "Whole File: View Temp Merged Mod in CLI"
+        }
+        choice_number += 1
+
+    if valid_requirements["code"]:
+        choice_functions[str(choice_number)] = {
+            "whole_file_open_diff_vs_code": "Whole File: Open Diff in VS Code"
+        }
+        choice_number += 1
+        choice_functions[str(choice_number)] = {
+            "whole_file_open_temp_merged_mod_vs_code": "Whole File: Open Temp Merged Mod in VS Code"
+        }
+        choice_number += 1
+
+    return choice_functions
+
+
 def choice_handler(
     new_mods_file,
     final_merged_mod_file,
@@ -353,6 +402,8 @@ def choice_handler(
     f_final_merged_mod_chunk,
     f_new_mod_chunk,
     valid_requirements,
+    last_display_diff,
+    last_user_choice,
     confirm_user_choice=False,
 ) -> dict:
     """Handle the user's choice for the diff.
@@ -427,7 +478,7 @@ def choice_handler(
         new_mod_start_line = disp_chunk_line_info[2] - 1  # Force 0-based indexing
         new_mod_length = disp_chunk_line_info[3]
         disp_diff_start_line = disp_chunk_line_info[4]
-        disp_diff_end_line = disp_chunk_line_info[5] + 1  # TODO: Test add one here
+        disp_diff_end_line = disp_chunk_line_info[5] + 1
 
         disp_final_merged_mod_chunk = list(
             f_final_merged_mod_chunk[
@@ -449,7 +500,79 @@ def choice_handler(
             tmp_merged_mod_lines.extend(tmp_matching_lines)
             final_merged_mod_current_process_line = final_merged_mod_start_line
 
-        # NOTE: Could be issues near end of chunks, however, KISS for now - just use gui editor for those cases
+        # Check if the current display diff is the same as the previous display diff
+        #   If it is, then skip the user choice and continue with the same choice as the previous display diff
+        #   Most likely need to handle in the merge_files function to keep track of the previous display diff across performance chunks
+        # Last Display Diff:    @@ -944,81    +1022,3 @@
+        # Current Display Diff: @@ -1,3       +1,81   @@
+        dup_diff_found = False
+        if last_display_diff:
+            last_disp_diff_parts = last_display_diff.split(" ")
+            # last_disp_diff_final_mod_start_line = last_disp_diff_parts[1].split(",")[0]
+            last_disp_diff_final_mod_length = last_disp_diff_parts[1].split(",")[1]
+            # last_disp_diff_new_mod_start_line = last_disp_diff_parts[2].split(",")[0]
+            last_disp_diff_new_mod_length = last_disp_diff_parts[2].split(",")[1]
+
+            # TODO: Test this and see if more conditions are needed
+            if int(last_disp_diff_final_mod_length) == int(new_mod_length) and int(
+                last_disp_diff_new_mod_length
+            ) == int(final_merged_mod_length):
+                dup_diff_found = True
+            else:
+                logger.info(
+                    f"Last Display Final Mod Length: {last_disp_diff_final_mod_length} | New Mod Length: {new_mod_length}"
+                )
+                logger.info(
+                    f"Last Display New Mod Length: {last_disp_diff_new_mod_length} | Final Mod Length: {final_merged_mod_length}"
+                )
+
+        if last_display_diff and last_user_choice and dup_diff_found:
+            logger.info("Last display diff is the same as the current display diff.")
+            logger.info(f"Using the last user choice: {last_user_choice}")
+
+            # Define the choices for the user
+            choice_functions = load_choice_functions(valid_requirements)
+            choice_function_dict = choice_functions.get(last_user_choice)
+            choice_function = list(choice_function_dict.keys())[0]
+
+            input_vars = {
+                "disp_final_merged_mod_chunk": disp_final_merged_mod_chunk,
+                "disp_new_mod_chunk": disp_new_mod_chunk,
+                "disp_diff_chunk": disp_diff_chunk,
+                "display_chunk_array": display_chunk_array,
+                "f_final_merged_mod_chunk": f_final_merged_mod_chunk,
+                "f_new_mod_chunk": f_new_mod_chunk,
+                "diff_lines_list": diff_lines_list,
+                "tmp_merged_mod_lines": tmp_merged_mod_lines,
+                "final_merged_mod_start_line": final_merged_mod_start_line,
+                "final_merged_mod_length": final_merged_mod_length,
+                "valid_requirements": valid_requirements,
+                "new_mods_file": new_mods_file,
+                "final_merged_mod_file": final_merged_mod_file,
+            }
+
+            # Call the choice function
+            result = globals()[choice_function](input_vars)
+            new_lines = []
+
+            if result["status"] == "pass_through":
+                new_lines = result["processed_lines"]
+            elif result["status"] == "return_continue":
+                return {
+                    "status": "continue",
+                    "processed_lines": result["processed_lines"],
+                    "last_display_diff": last_display_diff,
+                    "last_user_choice": last_user_choice,
+                }
+            elif result["status"] == "continue":
+                # FIXME: Seems using functions that return continue add weird text to the final merged mod file
+                continue
+
+            tmp_merged_mod_lines.extend(new_lines)
+            final_merged_mod_current_process_line = (
+                final_merged_mod_start_line + final_merged_mod_length
+            )
+            continue
 
         # Display the chunked lines with color coding
         for line in disp_diff_chunk:
@@ -459,58 +582,13 @@ def choice_handler(
                 logger.info("%s%s", Fore.RED, line.strip())
             elif line.startswith("@"):
                 logger.info("%s%s", Fore.CYAN, line.strip())
+                last_display_diff = line.strip()
             else:
                 logger.info("%s", line.strip())
 
         # Define the choices for the user
-        choice_number = 1
-        choice_functions = {}
-        default_choice_functions = [
-            {"disp_chunk_skip_no_changes": "Display Chunk: Skip - Make No Changes"},
-            {
-                "disp_chunk_overwrite_new_changes": "Display Chunk: Overwrite with New Changes"
-            },
-            {"disp_chunk_save_merged_diff": "Display Chunk: Insert only New Lines"},
-            {"whole_chunk_skip_no_changes": "Whole Chunk: Skip - Make No Changes"},
-            {
-                "whole_chunk_overwrite_new_changes": "Whole Chunk: Overwrite with New Changes"
-            },
-            {"whole_chunk_save_merged_diff": "Whole Chunk: Insert only New Lines"},
-        ]
-
-        for choice_function in default_choice_functions:
-            choice_functions[str(choice_number)] = choice_function
-            choice_number += 1
-
-        if valid_requirements["less"]:
-            choice_functions[str(choice_number)] = {
-                "whole_chunk_view_diff_less": "Whole Chunk: View Diff in CLI"
-            }
-            choice_number += 1
-            choice_functions[str(choice_number)] = {
-                "whole_file_view_temp_merged_mod_less": "Whole File: View Temp Merged Mod in CLI"
-            }
-            choice_number += 1
-        else:
-            logger.info("less is not available using pydoc instead.")
-            choice_functions[str(choice_number)] = {
-                "whole_chunk_view_diff_pydoc": "Whole Chunk: View Diff in CLI"
-            }
-            choice_number += 1
-            choice_functions[str(choice_number)] = {
-                "whole_file_view_temp_merged_mod_pydoc": "Whole File: View Temp Merged Mod in CLI"
-            }
-            choice_number += 1
-
-        if valid_requirements["code"]:
-            choice_functions[str(choice_number)] = {
-                "whole_file_open_diff_vs_code": "Whole File: Open Diff in VS Code"
-            }
-            choice_number += 1
-            choice_functions[str(choice_number)] = {
-                "whole_file_open_temp_merged_mod_vs_code": "Whole File: Open Temp Merged Mod in VS Code"
-            }
-            choice_number += 1
+        choice_functions = load_choice_functions(valid_requirements)
+        choice_number = len(choice_functions) + 1
 
         # End by adding quit and save and quit options
         choice_functions[str(choice_number)] = {"quit_save": "Quit and Save"}
@@ -561,8 +639,11 @@ def choice_handler(
                 return {
                     "status": "continue",
                     "processed_lines": result["processed_lines"],
+                    "last_display_diff": last_display_diff,
+                    "last_user_choice": user_choice,
                 }
             elif result["status"] == "continue":
+                # FIXME: Seems using functions that return continue add weird text to the final merged mod file
                 continue
             elif result["status"] == "quit-save":
                 return {
@@ -601,9 +682,18 @@ def choice_handler(
                 )
                 break
 
+    # Add the last matching lines to the merged chunk
+    tmp_matching_lines = f_final_merged_mod_chunk[
+        final_merged_mod_current_process_line:
+    ]
+    if tmp_matching_lines:
+        tmp_merged_mod_lines.extend(tmp_matching_lines)
+
     return {
         "status": "continue",
         "processed_lines": tmp_merged_mod_lines,
+        "last_display_diff": last_display_diff,
+        "last_user_choice": user_choice,
     }
 
 
@@ -691,6 +781,8 @@ def merge_files(
     perf_chunk = 0  # Initialize the performance chunk counter
     quit_out = False
     final_perf_chunk_sizes = []
+    last_display_diff = ""
+    last_user_choice = 0
     final_merged_mod_filepath_no_ext, _ = os.path.splitext(final_merged_mod_file)
     perf_chunk_sizes_file = final_merged_mod_filepath_no_ext + "_perf_chunk_sizes.tmp"
 
@@ -767,6 +859,8 @@ def merge_files(
                 formatted_final_merged_mod_chunk,
                 formatted_new_mod_chunk,
                 valid_requirements,
+                last_display_diff,
+                last_user_choice,
                 confirm_user_choice,
             )
 
@@ -798,6 +892,8 @@ def merge_files(
                 perf_chunk,
                 final_perf_chunk_sizes,
             )
+            last_display_diff = choice["last_display_diff"]
+            last_user_choice = choice["last_user_choice"]
 
             # Write the new lines to the temporary file
             final_perf_chunk_sizes.append(len(cleansed_lines))

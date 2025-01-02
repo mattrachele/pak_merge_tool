@@ -7,7 +7,7 @@
     will merge the text files and remove duplicates."""
 
 # Usage: python merge_tool.py --verbose --confirm --new_mods_dir="<dir>" --final_merged_mod_dir="<dir>"
-# Example: clear;python .\merge_tool.py --new_mods_dir="..\unpacked" --final_merged_mod_dir="..\~merged_mods_v1-0_P"
+# Example: clear;python .\merge_tool.py --new_mods_dir="..\unpacked\mod_dir" --final_merged_mod_dir="..\~merged_mods_v1-0_P"
 
 # Step 1: Unpak the pak files using ReUnpak.bat (Uses repak.exe)
 
@@ -355,6 +355,20 @@ def whole_file_open_temp_merged_mod_vs_code(input_vars) -> dict:
     }
 
 
+def skip_file(input_vars) -> dict:
+    """Skip the file and continue to the next file."""
+    return {
+        "status": "skip",
+    }
+
+
+def overwrite(input_vars) -> dict:
+    """Overwrite the whole file with the new mod file."""
+    return {
+        "status": "overwrite",
+    }
+
+
 def quit_save(input_vars) -> dict:
     """Quit and save the changes."""
     tmp_merged_mod_lines = input_vars["tmp_merged_mod_lines"]
@@ -372,7 +386,6 @@ def quit_out(input_vars) -> dict:
 def load_choice_functions(valid_requirements) -> dict:
     """Load the choice functions based on the valid requirements."""
     # Define the choices for the user
-    choice_number = 1
     choice_functions = {}
     default_choice_functions = [
         {"disp_diff_re_print": "Re-print the Display Diff"},
@@ -389,39 +402,38 @@ def load_choice_functions(valid_requirements) -> dict:
     ]
 
     for choice_function in default_choice_functions:
-        choice_functions[str(choice_number)] = choice_function
-        choice_number += 1
+        choice_functions[str(len(choice_functions) + 1)] = choice_function
 
     if valid_requirements["less"]:
-        choice_functions[str(choice_number)] = {
+        choice_functions[str(len(choice_functions) + 1)] = {
             "whole_chunk_view_diff_less": "Whole Chunk: View Diff in CLI"
         }
-        choice_number += 1
-        choice_functions[str(choice_number)] = {
+        choice_functions[str(len(choice_functions) + 1)] = {
             "whole_file_view_temp_merged_mod_less": "Whole File: View Temp Merged Mod in CLI"
         }
-        choice_number += 1
     else:
         logger.info("less is not available using pydoc instead.")
-        choice_functions[str(choice_number)] = {
+        choice_functions[str(len(choice_functions) + 1)] = {
             "whole_chunk_view_diff_pydoc": "Whole Chunk: View Diff in CLI"
         }
-        choice_number += 1
-        choice_functions[str(choice_number)] = {
+        choice_functions[str(len(choice_functions) + 1)] = {
             "whole_file_view_temp_merged_mod_pydoc": "Whole File: View Temp Merged Mod in CLI"
         }
-        choice_number += 1
 
     if valid_requirements["code"]:
-        choice_functions[str(choice_number)] = {
+        choice_functions[str(len(choice_functions) + 1)] = {
             "whole_file_open_diff_vs_code": "Whole File: Open Diff in VS Code"
         }
-        choice_number += 1
-        choice_functions[str(choice_number)] = {
+        choice_functions[str(len(choice_functions) + 1)] = {
             "whole_file_open_temp_merged_mod_vs_code": "Whole File: Open Temp Merged Mod in VS Code"
         }
-        choice_number += 1
 
+    choice_functions[str(len(choice_functions) + 1)] = {
+        "skip_file": "Whole File: Skip - Make No Changes"
+    }
+    choice_functions[str(len(choice_functions) + 1)] = {
+        "overwrite": "Whole File: Overwrite with New Changes"
+    }
     return choice_functions
 
 
@@ -447,6 +459,7 @@ def choice_handler(
     tmp_merged_mod_lines = []
     final_merged_mod_current_process_line = 0
     diff_lines_list = list(diff_lines)
+    MAX_LINES_TO_DISPLAY = 100
 
     # Definitions:
     # Whole Merged Mod Chunk:       Up to 1024 lines of the Merged Mod File
@@ -604,26 +617,44 @@ def choice_handler(
             )
             continue
 
-        # Display the chunked lines with color coding
-        for line in disp_diff_chunk:
-            if line.startswith("+"):
-                logger.info("%s%s", Fore.GREEN, line.strip())
-            elif line.startswith("-"):
-                logger.info("%s%s", Fore.RED, line.strip())
-            elif line.startswith("@"):
-                logger.info("%s%s", Fore.CYAN, line.strip())
-                last_display_diff = line.strip()
+        # If display diff is too large then force into less if available if not then pydoc
+        disp_diff_chunk_size = len(disp_diff_chunk)
+        if disp_diff_chunk_size > MAX_LINES_TO_DISPLAY:
+            if valid_requirements["less"]:
+                view_text_with_less(disp_diff_chunk)
             else:
-                logger.info("%s", line.strip())
+                view_text_with_pydoc(disp_diff_chunk)
+
+            for line in disp_diff_chunk:
+                if line.startswith("@"):
+                    last_display_diff = line.strip()
+        else:
+            # Display the chunked lines with color coding
+            for line in disp_diff_chunk:
+                if line.startswith("+"):
+                    logger.info("%s%s", Fore.GREEN, line.strip())
+                elif line.startswith("-"):
+                    logger.info("%s%s", Fore.RED, line.strip())
+                elif line.startswith("@"):
+                    logger.info("%s%s", Fore.CYAN, line.strip())
+                    last_display_diff = line.strip()
+                else:
+                    logger.info("%s", line.strip())
+
+        # TODO: Visual progress of merging
+        logger.info(
+            f"\n\t{'Final Merged Mod File:':<25} {final_merged_mod_file}\n\t{'New Mods File:':<25} {new_mods_file}"
+        )
 
         # Define the choices for the user
         choice_functions = load_choice_functions(valid_requirements)
         choice_number = len(choice_functions) + 1
 
         # End by adding quit and save and quit options
-        choice_functions[str(choice_number)] = {"quit_save": "Quit and Save"}
-        choice_number += 1
-        choice_functions[str(choice_number)] = {"quit_out": "Quit"}
+        choice_functions[str(len(choice_functions) + 1)] = {
+            "quit_save": "Quit and Save"
+        }
+        choice_functions[str(len(choice_functions) + 1)] = {"quit_out": "Quit"}
 
         while True:
             # Ask the user for a choice for the chunk
@@ -675,6 +706,10 @@ def choice_handler(
                 }
             elif result["status"] == "continue":
                 continue
+            elif result["status"] == "skip":
+                return {"status": "skip"}
+            elif result["status"] == "overwrite":
+                return {"status": "overwrite"}
             elif result["status"] == "quit-save":
                 return {
                     "status": "quit-save",
@@ -725,6 +760,34 @@ def choice_handler(
         "last_display_diff": last_display_diff,
         "last_user_choice": user_choice,
     }
+
+
+def non_text_file_choice_handler(final_merged_mod_path, new_mods_path) -> dict:
+    """Handle the choice for non-text files."""
+    while True:
+        logger.info(f"\n\tMrg: {final_merged_mod_path}\n\tNew: {new_mods_path}")
+        user_choice = (
+            input(
+                "\nNon-text file detected. Options:\n"
+                "1. Skip\n"
+                "2. Overwrite\n"
+                "3. Quit\n"
+                "Enter your choice: "
+            )
+            .strip()
+            .lower()
+        )
+
+        if not user_choice or user_choice not in {"1", "2", "3"}:
+            logger.warning("Invalid choice. Please choose again.")
+            continue
+
+        if user_choice == "1":
+            return {"status": "skip"}
+        if user_choice == "2":
+            return {"status": "overwrite"}
+        if user_choice == "3":
+            return {"status": "quit"}
 
 
 def reload_temp_merged_mod_file(temp_merged_mod_file) -> int:
@@ -810,6 +873,8 @@ def merge_files(
     max_perf_chunk_size = 1024  # Define the chunk size for reading the files
     perf_chunk = 0  # Initialize the performance chunk counter
     quit_out_bool = False
+    skip_file_bool = False
+    overwrite_file_bool = False
     final_perf_chunk_sizes = []
     last_display_diff = ""
     last_user_choice = 0
@@ -821,6 +886,7 @@ def merge_files(
         with open(perf_chunk_sizes_file, "r", encoding="utf-8") as f:
             final_perf_chunk_sizes = json.loads(f.read())
 
+    # TODO: Display new mod name and final merged mod name in a more readable format and add path after the name
     logger.info(f"\n\tMrg: {new_mods_file}\n\tNew: {final_merged_mod_file}")
     start_time = time.time()
 
@@ -840,6 +906,7 @@ def merge_files(
                 next(new_mod)
                 next(final_merged_mod)
 
+        # Loop through the merge files until the end of the two files
         while True:
             # Read a chunk of lines from each file based on the chunk size
             perf_chunk += 1
@@ -859,6 +926,7 @@ def merge_files(
             if not new_mod_chunk and not final_merged_mod_chunk:
                 break
 
+            # FIXME: Stripping the whitespace helps with diffing, but removes all space formatting from the file
             formatted_new_mod_chunk = strip_whitespace(new_mod_chunk)
             formatted_final_merged_mod_chunk = strip_whitespace(final_merged_mod_chunk)
 
@@ -891,6 +959,14 @@ def merge_files(
                 last_user_choice,
                 confirm_user_choice,
             )
+
+            if choice["status"] == "skip":
+                skip_file_bool = True
+                break
+
+            if choice["status"] == "overwrite":
+                overwrite_file_bool = True
+                break
 
             if choice["status"] == "quit-save":
                 # Scan temp lines for duplicate lines caused by matching lines crossing over chunks
@@ -928,7 +1004,7 @@ def merge_files(
             temp_merged_mod.writelines(cleansed_lines)
             temp_merged_mod.flush()  # Flush the buffer to write the lines to the file
 
-    if not quit_out_bool:
+    if not quit_out_bool and not skip_file_bool and not overwrite_file_bool:
         # Move the temporary file to the final_merged_mod_file
         shutil.move(temp_merged_mod_file, final_merged_mod_file)
 
@@ -939,6 +1015,10 @@ def merge_files(
     # Delete the perf_chunk_sizes_file
     if os.path.exists(perf_chunk_sizes_file):
         os.remove(perf_chunk_sizes_file)
+
+    # If whole file overwrite chosen, then overwrite the final_merged_mod_file with the new_mods_file
+    if overwrite_file_bool:
+        shutil.copy2(new_mods_file, final_merged_mod_file)
 
     end_time = time.time()
     elapsed_time = end_time - start_time
@@ -958,8 +1038,11 @@ def merge_directories(
     if not os.path.exists(final_merged_mod_dir):
         os.makedirs(final_merged_mod_dir)
 
+    new_mods_dir_list = os.listdir(new_mods_dir)
+    sorted_new_mods_dir_list = sorted(new_mods_dir_list)
+
     # Iterate through all items in the new_mods directory
-    for item in os.listdir(new_mods_dir):
+    for item in sorted_new_mods_dir_list:
         new_mods_item = os.path.join(new_mods_dir, item)
         final_merged_mod_item = os.path.join(final_merged_mod_dir, item)
 
@@ -975,44 +1058,64 @@ def merge_directories(
             if result == "quit":
                 return "quit"
         else:
-            logger.debug(f"New Mods Item is a file: {new_mods_item}")
             # If the item is a file, handle conflicts
-            if os.path.exists(final_merged_mod_item):
-                logger.debug(f"Final Merged Mod Item exists: {final_merged_mod_item}")
-                result = merge_files(
-                    new_mods_item,
-                    final_merged_mod_item,
-                    valid_requirements,
-                    confirm_user_choice,
-                )
-                if result == "quit":
-                    return "quit"
-            else:
-                logger.debug(
-                    f"Final Merged Mod Item does not exist: {final_merged_mod_item}"
+            logger.debug(f"New Mods Item is a file: {new_mods_item}")
+
+            if not os.path.exists(final_merged_mod_dir):
+                logger.info(
+                    f"Final merged mod file does not exist. Copying {new_mods_item} to {final_merged_mod_item}"
                 )
                 shutil.copy2(new_mods_item, final_merged_mod_item)
+
+            # Validate the file extension to ensure it's a text file and not a binary file
+            file_extension = os.path.splitext(new_mods_item)[1]
+            valid_file_extensions = {
+                ".txt",
+                ".cfg",
+                ".ini",
+                ".lua",
+                ".json",
+                ".xml",
+                ".yml",
+                ".yaml",
+                ".md",
+                ".bat",
+                ".sh",
+            }
+            if file_extension not in valid_file_extensions:
+                logger.info("Handling non-text file.")
+                result = non_text_file_choice_handler(
+                    final_merged_mod_item, new_mods_item
+                )
+                if result["status"] == "quit":
+                    return "quit"
+
+                if result["status"] == "skip":
+                    continue
+                elif result["status"] == "overwrite":
+                    shutil.copy2(new_mods_item, final_merged_mod_item)
+                continue
+
+            logger.debug(f"Final Merged Mod Item exists: {final_merged_mod_item}")
+            result = merge_files(
+                new_mods_item,
+                final_merged_mod_item,
+                valid_requirements,
+                confirm_user_choice,
+            )
+            if result == "quit":
+                return "quit"
+
     return "continue"
 
 
-def main() -> bool:
-    """Main function to merge mod directories."""
-    # Define the command-line arguments
-    parser = argparse.ArgumentParser(description="Merge mod directories.")
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
-    parser.add_argument(
-        "--confirm", action="store_true", help="Disable user confirmation"
-    )
-    parser.add_argument("--new_mods_dir", help="The directory containing the new mods")
-    parser.add_argument(
-        "--final_merged_mod_dir", help="The directory containing the final merged mods"
-    )
-    args = parser.parse_args()
+def merge_tool(
+    new_mods_dir, final_merged_mod_dir, verbose=False, confirm=False
+) -> bool:
+    logger.info(f"Verbose: {verbose}")
+    logger.info(f"Confirm: {confirm}")
 
-    logger.info(f"Verbose: {args.verbose}")
-    logger.info(f"Confirm: {args.confirm}")
-
-    if not args.new_mods_dir or not args.final_merged_mod_dir:
+    if not new_mods_dir or not final_merged_mod_dir:
         logger.error(
             "new_mods_dir and final_merged_mod_dir are required as cmd ln args."
         )
@@ -1022,27 +1125,30 @@ def main() -> bool:
     valid_requirements = validate_requirements()
 
     # Check if the final_merged_mod_dir is a directory and isn't inside the new_mods_dir
-    if not os.path.isdir(args.final_merged_mod_dir):
-        logger.error(f"{args.final_merged_mod_dir} is not a directory.")
+    if not os.path.isdir(final_merged_mod_dir):
+        logger.error(f"{final_merged_mod_dir} is not a directory.")
         return False
 
     # Check if the new_mods_dir is a directory
-    if not os.path.isdir(args.new_mods_dir):
-        logger.error(f"{args.new_mods_dir} is not a directory.")
+    if not os.path.isdir(new_mods_dir):
+        logger.error(f"{new_mods_dir} is not a directory.")
         return False
 
-    final_merged_mod_dir_abs = os.path.abspath(args.final_merged_mod_dir)
-    new_mods_dir_abs = os.path.abspath(args.new_mods_dir)
+    final_merged_mod_dir_abs = os.path.abspath(final_merged_mod_dir)
+    new_mods_dir_abs = os.path.abspath(new_mods_dir)
     if new_mods_dir_abs.startswith(
         final_merged_mod_dir_abs
     ) or final_merged_mod_dir_abs.startswith(new_mods_dir_abs):
         logger.error("Cannot merge directories that are inside each other.")
         return False
 
+    new_mods_dir_list = os.listdir(new_mods_dir)
+    sorted_new_mods_dir_list = sorted(new_mods_dir_list)
+
     # Iterate through all directories in the new_mods base directory
-    for path_name in os.listdir(args.new_mods_dir):
-        new_mods_path = os.path.join(args.new_mods_dir, path_name)
-        final_merged_mod_path = os.path.join(args.final_merged_mod_dir, path_name)
+    for path_name in sorted_new_mods_dir_list:
+        new_mods_path = os.path.join(new_mods_dir, path_name)
+        final_merged_mod_path = os.path.join(final_merged_mod_dir, path_name)
 
         logger.info(f"{'Processing new mods path:':<33} {new_mods_path}")
 
@@ -1055,7 +1161,7 @@ def main() -> bool:
                 new_mods_path,
                 final_merged_mod_path,
                 valid_requirements,
-                args.confirm,
+                confirm,
             )
             if result == "quit":
                 logger.info("Merge aborted.")
@@ -1064,6 +1170,14 @@ def main() -> bool:
         # Handle the case where the item is a file in the root directory
         else:
             logger.info(f"Processing final merged mod path: {final_merged_mod_path}")
+
+            # Check if the final merged mod file exists and just copy it over if it doesn't
+            if not os.path.exists(final_merged_mod_path):
+                logger.info(
+                    f"Final merged mod file does not exist. Copying {new_mods_path} to {final_merged_mod_path}"
+                )
+                shutil.copy2(new_mods_path, final_merged_mod_path)
+                continue
 
             # Validate the file extension to ensure it's a text file and not a binary file
             file_extension = os.path.splitext(new_mods_path)[1]
@@ -1081,24 +1195,25 @@ def main() -> bool:
                 ".sh",
             }
             if file_extension not in valid_file_extensions:
-                logger.warning(
-                    f"Skipping {new_mods_path} because it's not a text file or a known file type."
+                logger.info("Handling non-text file.")
+                result = non_text_file_choice_handler(
+                    final_merged_mod_path, new_mods_path
                 )
-                continue
+                if result["status"] == "quit":
+                    logger.info("Merge aborted.")
+                    return False
 
-            # Check if the final merged mod file exists and just copy it over if it doesn't
-            if not os.path.exists(final_merged_mod_path):
-                logger.info(
-                    f"Final merged mod file does not exist. Copying {new_mods_path} to {final_merged_mod_path}"
-                )
-                shutil.copy2(new_mods_path, final_merged_mod_path)
+                if result["status"] == "skip":
+                    continue
+                elif result["status"] == "overwrite":
+                    shutil.copy2(new_mods_path, final_merged_mod_path)
                 continue
 
             result = merge_files(
                 new_mods_path,
                 final_merged_mod_path,
                 valid_requirements,
-                args.confirm,
+                confirm,
             )
             if result == "quit":
                 logger.info("Merge aborted.")
@@ -1106,6 +1221,25 @@ def main() -> bool:
 
     logger.info("Merge complete.")
     return True
+
+
+def main() -> bool:
+    """Main function to merge mod directories."""
+    # Define the command-line arguments
+    parser = argparse.ArgumentParser(description="Merge mod directories.")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+    parser.add_argument(
+        "--confirm", action="store_true", help="Disable user confirmation"
+    )
+    parser.add_argument("--new_mods_dir", help="The directory containing the new mods")
+    parser.add_argument(
+        "--final_merged_mod_dir", help="The directory containing the final merged mods"
+    )
+    args = parser.parse_args()
+
+    return merge_tool(
+        args.new_mods_dir, args.final_merged_mod_dir, args.verbose, args.confirm
+    )
 
 
 if __name__ == "__main__":

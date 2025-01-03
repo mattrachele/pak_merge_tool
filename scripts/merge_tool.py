@@ -927,6 +927,7 @@ def merge_files(
                 break
 
             # FIXME: Stripping the whitespace helps with diffing, but removes all space formatting from the file
+            # TODO: Add formatting fixer for config files that adhears to the file format
             formatted_new_mod_chunk = strip_whitespace(new_mod_chunk)
             formatted_final_merged_mod_chunk = strip_whitespace(final_merged_mod_chunk)
 
@@ -1061,11 +1062,12 @@ def merge_directories(
             # If the item is a file, handle conflicts
             logger.debug(f"New Mods Item is a file: {new_mods_item}")
 
-            if not os.path.exists(final_merged_mod_dir):
+            if not os.path.exists(final_merged_mod_item):
                 logger.info(
                     f"Final merged mod file does not exist. Copying {new_mods_item} to {final_merged_mod_item}"
                 )
                 shutil.copy2(new_mods_item, final_merged_mod_item)
+                continue
 
             # Validate the file extension to ensure it's a text file and not a binary file
             file_extension = os.path.splitext(new_mods_item)[1]
@@ -1114,12 +1116,6 @@ def merge_tool(
 ) -> bool:
     logger.info(f"Verbose: {verbose}")
     logger.info(f"Confirm: {confirm}")
-
-    if not new_mods_dir or not final_merged_mod_dir:
-        logger.error(
-            "new_mods_dir and final_merged_mod_dir are required as cmd ln args."
-        )
-        return False
 
     # Validate the requirements
     valid_requirements = validate_requirements()
@@ -1176,6 +1172,7 @@ def merge_tool(
                 logger.info(
                     f"Final merged mod file does not exist. Copying {new_mods_path} to {final_merged_mod_path}"
                 )
+                # TODO: Pass org_comp flag to merge_tool.py to enable comparison to base game files - build out support in merge_tool.py
                 shutil.copy2(new_mods_path, final_merged_mod_path)
                 continue
 
@@ -1231,9 +1228,13 @@ def main() -> bool:
     parser.add_argument(
         "--confirm", action="store_true", help="Disable user confirmation"
     )
-    parser.add_argument("--new_mods_dir", help="The directory containing the new mods")
     parser.add_argument(
-        "--final_merged_mod_dir", help="The directory containing the final merged mods"
+        "--new_mods_dir", help="The directory containing the new mods", required=True
+    )
+    parser.add_argument(
+        "--final_merged_mod_dir",
+        help="The directory containing the final merged mods",
+        required=True,
     )
     args = parser.parse_args()
 

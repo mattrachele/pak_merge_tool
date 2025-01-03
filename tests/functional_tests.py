@@ -21,7 +21,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("subprocess.run")
     def test_version_check(self, mock_subprocess_run):
         """Test version_check(command) -> bool"""
-        from merge_tool import version_check
+        from scripts.merge_tool import version_check
 
         # Return an object with a returncode of 0
         mock_result = Mock()
@@ -35,7 +35,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("merge_tool.version_check")
     def test_validate_requirements(self, mock_version_check):
         """Test validate_requirements() -> dict"""
-        from merge_tool import validate_requirements
+        from scripts.merge_tool import validate_requirements
 
         mock_version_check.return_value = True
 
@@ -46,7 +46,7 @@ class TestMergeTool(unittest.TestCase):
     # Test strip_whitespace(lines) -> list
     def test_strip_whitespace(self):
         """Test strip_whitespace(lines) -> list"""
-        from merge_tool import strip_whitespace
+        from scripts.merge_tool import strip_whitespace
 
         lines = ["  test  ", "  test2  "]
         result = strip_whitespace(lines)
@@ -55,7 +55,7 @@ class TestMergeTool(unittest.TestCase):
     # Test filter_updated_lines(original_lines, new_lines) -> list
     def test_filter_updated_lines(self):
         """Test filter_updated_lines(original_lines, new_lines) -> list"""
-        from merge_tool import filter_updated_lines
+        from scripts.merge_tool import filter_updated_lines
 
         original_lines = ["test", "test2"]
         new_lines = ["test", "test3"]
@@ -67,7 +67,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("merge_tool.input")
     def test_confirm_choice(self, mock_input, mock_filter_updated_lines):
         """Test confirm_choice(original_lines, new_lines) -> str"""
-        from merge_tool import confirm_choice
+        from scripts.merge_tool import confirm_choice
 
         mock_input.return_value = "1"
         mock_filter_updated_lines.return_value = ["test3"]
@@ -81,7 +81,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("pydoc.pager")
     def test_view_text_with_pydoc(self, mock_pager):
         """Test view_text_with_pydoc(text) -> None"""
-        from merge_tool import view_text_with_pydoc
+        from scripts.merge_tool import view_text_with_pydoc
 
         text = "test"
         view_text_with_pydoc(text)
@@ -92,7 +92,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("subprocess.Popen.communicate")
     def test_view_text_with_less(self, mock_communicate, mock_popen):
         """Test view_text_with_less(text) -> None"""
-        from merge_tool import view_text_with_less
+        from scripts.merge_tool import view_text_with_less
 
         text = ["test"]
         view_text_with_less(text)
@@ -102,7 +102,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("subprocess.run")
     def test_open_files_in_vscode_compare(self, mock_subprocess_run):
         """Test open_files_in_vscode_compare(file1, file2) -> None"""
-        from merge_tool import open_files_in_vscode_compare
+        from scripts.merge_tool import open_files_in_vscode_compare
 
         file1 = "test1"
         file2 = "test2"
@@ -112,7 +112,7 @@ class TestMergeTool(unittest.TestCase):
     # Test def disp_diff_re_print(input_vars) -> dict:
     def test_disp_diff_re_print(self):
         """Test disp_diff_re_print(input_vars) -> dict"""
-        from merge_tool import disp_diff_re_print
+        from scripts.merge_tool import disp_diff_re_print
 
         input_vars = {
             "disp_diff_chunk": ["@@ -1,2 +1,2 @@\n", "-test3\n", "+test2\n", "test4\n"],
@@ -123,7 +123,7 @@ class TestMergeTool(unittest.TestCase):
     # Test def disp_chunk_skip_no_changes(input_vars) -> dict
     def test_disp_chunk_skip_no_changes(self):
         """Test disp_chunk_skip_no_changes(input_vars) -> dict"""
-        from merge_tool import disp_chunk_skip_no_changes
+        from scripts.merge_tool import disp_chunk_skip_no_changes
 
         input_vars = {
             "disp_final_merged_mod_chunk": ["test1", "test2"],
@@ -135,7 +135,7 @@ class TestMergeTool(unittest.TestCase):
     # Test disp_chunk_overwrite_new_changes(input_vars) -> dict
     def test_disp_chunk_overwrite_new_changes(self):
         """Test disp_chunk_overwrite_new_changes(input_vars) -> dict"""
-        from merge_tool import disp_chunk_overwrite_new_changes
+        from scripts.merge_tool import disp_chunk_overwrite_new_changes
 
         input_vars = {
             "disp_new_mod_chunk": ["test3", "test4"],
@@ -147,7 +147,7 @@ class TestMergeTool(unittest.TestCase):
     # Test def disp_chunk_save_merged_diff(input_vars) -> dict
     def test_disp_chunk_save_merged_diff(self):
         """Test disp_chunk_save_merged_diff(input_vars) -> dict"""
-        from merge_tool import disp_chunk_save_merged_diff
+        from scripts.merge_tool import disp_chunk_save_merged_diff
 
         input_vars = {
             "disp_diff_chunk": [
@@ -164,7 +164,7 @@ class TestMergeTool(unittest.TestCase):
     # Test def whole_chunk_skip_no_changes(input_vars) -> dict
     def test_whole_chunk_skip_no_changes(self):
         """Test whole_chunk_skip_no_changes(input_vars) -> dict"""
-        from merge_tool import whole_chunk_skip_no_changes
+        from scripts.merge_tool import whole_chunk_skip_no_changes
 
         input_vars = {
             "f_final_merged_mod_chunk": ["test1", "test2"],
@@ -176,7 +176,7 @@ class TestMergeTool(unittest.TestCase):
     # Test def whole_chunk_overwrite_new_changes(input_vars) -> dict
     def test_whole_chunk_overwrite_new_changes(self):
         """Test whole_chunk_overwrite_new_changes(input_vars) -> dict"""
-        from merge_tool import whole_chunk_overwrite_new_changes
+        from scripts.merge_tool import whole_chunk_overwrite_new_changes
 
         input_vars = {
             "f_new_mod_chunk": ["test3", "test4"],
@@ -188,7 +188,7 @@ class TestMergeTool(unittest.TestCase):
     # Test def whole_chunk_save_merged_diff(input_vars) -> dict
     def test_whole_chunk_save_merged_diff(self):
         """Test whole_chunk_save_merged_diff(input_vars) -> dict"""
-        from merge_tool import whole_chunk_save_merged_diff
+        from scripts.merge_tool import whole_chunk_save_merged_diff
 
         input_vars = {
             "f_final_merged_mod_chunk": ["test3", "test4"],
@@ -208,7 +208,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("merge_tool.view_text_with_less")
     def test_whole_chunk_view_diff_less(self, mock_view_text_with_less):
         """Test whole_chunk_view_diff_less(input_vars) -> dict"""
-        from merge_tool import whole_chunk_view_diff_less
+        from scripts.merge_tool import whole_chunk_view_diff_less
 
         input_vars = {
             "diff_lines_list": ["test1", "test2"],
@@ -224,7 +224,7 @@ class TestMergeTool(unittest.TestCase):
         self, mock_view_text_with_less, mock_open_var
     ):
         """Test whole_file_view_temp_merged_mod_less(input_vars) -> dict"""
-        from merge_tool import whole_file_view_temp_merged_mod_less
+        from scripts.merge_tool import whole_file_view_temp_merged_mod_less
 
         input_vars = {
             "temp_merged_mod_file": "test1",
@@ -237,7 +237,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("merge_tool.view_text_with_pydoc")
     def test_whole_chunk_view_diff_pydoc(self, mock_view_text_with_pydoc):
         """Test whole_chunk_view_diff_pydoc(input_vars) -> dict"""
-        from merge_tool import whole_chunk_view_diff_pydoc
+        from scripts.merge_tool import whole_chunk_view_diff_pydoc
 
         input_vars = {
             "diff_lines_list": ["test1", "test2"],
@@ -253,7 +253,7 @@ class TestMergeTool(unittest.TestCase):
         self, mock_view_text_with_pydoc, mock_open_var
     ):
         """Test whole_file_view_temp_merged_mod_pydoc(input_vars) -> dict"""
-        from merge_tool import whole_file_view_temp_merged_mod_pydoc
+        from scripts.merge_tool import whole_file_view_temp_merged_mod_pydoc
 
         input_vars = {
             "temp_merged_mod_file": "test1",
@@ -266,7 +266,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("merge_tool.open_files_in_vscode_compare")
     def test_whole_file_open_diff_vs_code(self, mock_open_files_in_vscode_compare):
         """Test whole_file_open_diff_vs_code(input_vars) -> dict"""
-        from merge_tool import whole_file_open_diff_vs_code
+        from scripts.merge_tool import whole_file_open_diff_vs_code
 
         input_vars = {
             "new_mods_file": "test1",
@@ -282,7 +282,7 @@ class TestMergeTool(unittest.TestCase):
         self, mock_open_files_in_vscode_compare
     ):
         """Test whole_file_open_temp_merged_mod_vs_code(input_vars) -> dict"""
-        from merge_tool import whole_file_open_temp_merged_mod_vs_code
+        from scripts.merge_tool import whole_file_open_temp_merged_mod_vs_code
 
         input_vars = {
             "final_merged_mod_file": "test2",
@@ -294,7 +294,7 @@ class TestMergeTool(unittest.TestCase):
     # Test def quit_save(input_vars) -> dict
     def test_quit_save(self):
         """Test quit_save(input_vars) -> dict"""
-        from merge_tool import quit_save
+        from scripts.merge_tool import quit_save
 
         input_vars = {
             "tmp_merged_mod_lines": ["test1", "test2"],
@@ -305,7 +305,7 @@ class TestMergeTool(unittest.TestCase):
     # Test def quit_out(input_vars) -> dict
     def test_quit_out(self):
         """Test quit_out(input_vars) -> dict"""
-        from merge_tool import quit_out
+        from scripts.merge_tool import quit_out
 
         input_vars = {}
         result = quit_out(input_vars)
@@ -314,7 +314,7 @@ class TestMergeTool(unittest.TestCase):
     # Test load_choice_functions(valid_requirements) -> dict:
     def test_load_choice_functions(self):
         """Test load_choice_functions(valid_requirements) -> dict"""
-        from merge_tool import load_choice_functions
+        from scripts.merge_tool import load_choice_functions
 
         valid_requirements = {"code": True, "less": True}
         result = load_choice_functions(valid_requirements)
@@ -409,7 +409,7 @@ class TestMergeTool(unittest.TestCase):
         mock_input,
     ):
         """Test choice_handler() -> dict"""
-        from merge_tool import choice_handler
+        from scripts.merge_tool import choice_handler
 
         new_mods_file = "test1"
         final_merged_mod_file = "test2"
@@ -445,7 +445,7 @@ class TestMergeTool(unittest.TestCase):
     # Test reload_temp_merged_mod_file(tmp_merged_mod_file) -> int
     def test_reload_temp_merged_mod_file(self):
         """Test reload_temp_merged_mod_file(tmp_merged_mod_file) -> int"""
-        from merge_tool import reload_temp_merged_mod_file
+        from scripts.merge_tool import reload_temp_merged_mod_file
 
         tmp_merged_mod_file = "test"
         result = reload_temp_merged_mod_file(tmp_merged_mod_file)
@@ -455,7 +455,7 @@ class TestMergeTool(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open)
     def test_duplicate_line_check(self, mock_open_var):
         """Test duplicate_line_check(temp_merged_mod_file, new_tmp_merged_mod_lines, perf_chunk, final_perf_chunk_sizes) -> list"""
-        from merge_tool import duplicate_line_check
+        from scripts.merge_tool import duplicate_line_check
 
         temp_merged_mod_file = "test"
         new_tmp_merged_mod_lines = ["test1", "test2"]
@@ -493,7 +493,7 @@ class TestMergeTool(unittest.TestCase):
         mock_getsize,
     ):
         """Test merge_files(new_mods_file, final_merged_mod_file) -> str"""
-        from merge_tool import merge_files
+        from scripts.merge_tool import merge_files
 
         new_mods_file = "test1"
         final_merged_mod_file = "test2"
@@ -534,7 +534,7 @@ class TestMergeTool(unittest.TestCase):
         mock_path_join,
     ):
         """Test merge_directories(new_mods_dir, final_merged_mod_dir) -> str"""
-        from merge_tool import merge_directories
+        from scripts.merge_tool import merge_directories
 
         new_mods_dir = "test1"
         final_merged_mod_dir = "test2"
@@ -570,7 +570,7 @@ class TestMergeTool(unittest.TestCase):
         mock_merge_directories,
     ):
         """Test main() -> bool"""
-        from merge_tool import main
+        from scripts.merge_tool import main
 
         mock_validate_requirements.return_value = {"code": True, "less": True}
         mock_parse_args.return_value = argparse.Namespace(

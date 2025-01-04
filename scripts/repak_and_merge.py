@@ -86,12 +86,12 @@ def sanitize_mod_name(pak_file_name) -> dict:
     no_p_end_pak_file_name = re.sub(r"_p$", "", no_ext_end_pak_file_name)
     pak_file_name_parts = no_p_end_pak_file_name.split("_")
 
-    version_pattern = re.compile(r'v\d+[\.\-]\d+(\.\d+)?')
+    version_pattern = re.compile(r"v\d+[\.\-]\d+(\.\d+)?")
     new_pak_file_version = ""
     for part in pak_file_name_parts:
         if version_pattern.match(part):
             new_pak_file_version = part
-            pak_file_name_parts.remove(part) # Remove the version part from the list
+            pak_file_name_parts.remove(part)  # Remove the version part from the list
             break
 
     pak_file_clean_name = "_".join(pak_file_name_parts)
@@ -114,7 +114,9 @@ def update_mod_version(history, pak_file_clean_name, new_pak_file_version) -> di
             new_pak_file_version = str(int(last_version) + 1)
 
     if last_version and new_pak_file_version == last_version:
-        logger.info(f"Version number matches last version for {pak_file_clean_name}: {new_pak_file_version}")
+        logger.info(
+            f"Version number matches last version for {pak_file_clean_name}: {new_pak_file_version}"
+        )
         return pak_file_history
 
     version_history.append(new_pak_file_version)
@@ -179,18 +181,30 @@ def unpack_files(repak_path, pak_dir, extract_dir, resume) -> bool:
         version_history = pak_file_history.get("version") or []
         last_version = version_history[-1] if version_history else None
 
-        if resume and pak_file_history and last_version and new_pak_file_version == last_version and pak_file_history.get("unpacked"):
-            logger.info(f"Version number matches last version for {pak_file}: {new_pak_file_version}")
+        if (
+            resume
+            and pak_file_history
+            and last_version
+            and new_pak_file_version == last_version
+            and pak_file_history.get("unpacked")
+        ):
+            logger.info(
+                f"Version number matches last version for {pak_file}: {new_pak_file_version}"
+            )
             logger.info(f"Skipping {pak_file} as it has already been unpacked.")
             continue
 
-        history[pak_file_clean_name] = update_mod_version(history, pak_file_clean_name, new_pak_file_version)
+        history[pak_file_clean_name] = update_mod_version(
+            history, pak_file_clean_name, new_pak_file_version
+        )
 
         # Save the last modified date of the pak file to the history file
         timestamp = os.path.getmtime(pak_file_path)
         last_modified = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
         history[pak_file_clean_name]["last_modified"] = last_modified
-        history[pak_file_clean_name]["unpacked"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        history[pak_file_clean_name]["unpacked"] = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
         # Run repak to unpack the files
         result = subprocess.run(
@@ -242,7 +256,13 @@ def load_history() -> dict:
 
 
 def merge_mods(
-    sorted_new_mods_dir_list, new_mods_dir, final_merged_mod_dir, verbose, confirm, org_comp, resume
+    sorted_new_mods_dir_list,
+    new_mods_dir,
+    final_merged_mod_dir,
+    verbose,
+    confirm,
+    org_comp,
+    resume,
 ) -> bool:
     """Merge the mods in the new_mods_dir into the final_merged_mod_dir."""
     # Load the history file
@@ -256,8 +276,15 @@ def merge_mods(
         mod_history = history.get(new_mod_dir)
         merged_date = mod_history.get("merged")
         last_modified_date = mod_history.get("last_modified")
-        if resume and merged_date and last_modified_date and merged_date >= last_modified_date:
-            logger.info(f"Resume set and current mod version in history | Skipping mod: {new_mod_dir}")
+        if (
+            resume
+            and merged_date
+            and last_modified_date
+            and merged_date >= last_modified_date
+        ):
+            logger.info(
+                f"Resume set and current mod version in history | Skipping mod: {new_mod_dir}"
+            )
             continue
 
         logger.info(f"Processing mod: {new_mod_dir}")
@@ -282,8 +309,12 @@ def merge_mods(
         pak_file_clean_name = pak_file_name_parts.get("clean_name")
         new_pak_file_version = pak_file_name_parts.get("version")
 
-        history[pak_file_clean_name] = update_mod_version(history, pak_file_clean_name, new_pak_file_version)
-        history[pak_file_clean_name]["merged"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        history[pak_file_clean_name] = update_mod_version(
+            history, pak_file_clean_name, new_pak_file_version
+        )
+        history[pak_file_clean_name]["merged"] = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
     save_history(history)
     return True

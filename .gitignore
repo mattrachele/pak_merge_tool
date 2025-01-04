@@ -173,3 +173,4 @@ cython_debug/
 # Manual Add
 tests/merged_test_dir/*
 tests/new_test_dir/*
+configs/history.json

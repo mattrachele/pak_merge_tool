@@ -8,6 +8,7 @@
 
 # Usage: python merge_tool.py --verbose --confirm --new_mods_dir="<dir>" --final_merged_mod_dir="<dir>"
 # Example: clear;python .\merge_tool.py --new_mods_dir="..\unpacked\mod_dir" --final_merged_mod_dir="..\~merged_mods_v1-0_P"
+# Test Example: clear;python scripts\merge_tool.py --new_mods_dir="tests\new_test_dir\m_dir" --final_merged_mod_dir="tests\merged_test_dir\m_dir"
 
 # Step 1: Unpak the pak files using ReUnpak.bat (Uses repak.exe)
 
@@ -802,6 +803,7 @@ def reload_temp_merged_mod_file(temp_merged_mod_file) -> int:
     return last_processed_line
 
 
+# TODO: Test the merge lines and dup line check more - seems still has issues
 def duplicate_line_check(
     temp_merged_mod_file, new_tmp_merged_mod_lines, perf_chunk, final_perf_chunk_sizes
 ) -> list:
@@ -866,6 +868,62 @@ def duplicate_line_check(
     return cleansed_lines
 
 
+def config_file_formatter(unformatted_lines, tab_level) -> list:
+    """Format the lines of a config file."""
+    formatted_lines = []
+    for line in unformatted_lines:
+        formatted_line = ""
+        no_trail_line = re.sub(r"[ \t]+$", "", line)
+        if "struct.begin" in line:
+            formatted_line = f"{'    ' * tab_level}{no_trail_line}"
+            tab_level += 1
+        elif "struct.end" in line:
+            tab_level -= 1
+            formatted_line = f"{'    ' * tab_level}{no_trail_line}"
+        else:
+            formatted_line = f"{'    ' * tab_level}{no_trail_line}"
+
+        formatted_lines.append(formatted_line)
+
+    # NOTE: Performance chunking will cause the tab level to be off - won't always end at 0
+    # if tab_level != 0:
+    #     logger.warning("Config file is not formatted correctly. Did not end at tab level 0.")
+
+    return {
+        "formatted_lines": formatted_lines,
+        "tab_level": tab_level,
+    }
+
+
+# TODO: This formatting is only for cfg files - clarify and add more file types
+def format_file(file_path) -> bool:
+    """Format a file."""
+    temp_formatted_file = file_path + "_format.tmp"
+    performance_chunk_size = 1024
+    current_depth = 0
+    with open(file_path, "r", encoding="utf-8") as f, open(
+        temp_formatted_file, "w", encoding="utf-8"
+    ) as f_temp:
+        while True:
+            lines = f.readlines(performance_chunk_size)
+            if not lines:
+                break
+
+            formatted_data = config_file_formatter(lines, current_depth)
+            formatted_lines = formatted_data["formatted_lines"]
+            current_depth = formatted_data["tab_level"]
+            f_temp.writelines(formatted_lines)
+
+    os.replace(temp_formatted_file, file_path)
+    if current_depth != 0:
+        logger.warning(
+            "Config file is not formatted correctly. Did not end at tab level 0."
+        )
+        return False
+
+    return True
+
+
 def merge_files(
     new_mods_file, final_merged_mod_file, valid_requirements, confirm_user_choice=False
 ) -> str:
@@ -894,6 +952,10 @@ def merge_files(
     temp_merged_mod_file = final_merged_mod_file + ".tmp"
     # Check if the temporary file exists and reload the last processed line
     last_processed_line = reload_temp_merged_mod_file(temp_merged_mod_file)
+
+    # Pre-format the files before reading them
+    format_file(new_mods_file)
+    format_file(final_merged_mod_file)
 
     with open(new_mods_file, "r", encoding="utf-8") as new_mod, open(
         final_merged_mod_file, "r", encoding="utf-8"
@@ -926,22 +988,17 @@ def merge_files(
             if not new_mod_chunk and not final_merged_mod_chunk:
                 break
 
-            # FIXME: Stripping the whitespace helps with diffing, but removes all space formatting from the file
-            # TODO: Add formatting fixer for config files that adhears to the file format
-            formatted_new_mod_chunk = strip_whitespace(new_mod_chunk)
-            formatted_final_merged_mod_chunk = strip_whitespace(final_merged_mod_chunk)
-
-            if formatted_new_mod_chunk == formatted_final_merged_mod_chunk:
+            if new_mod_chunk == final_merged_mod_chunk:
                 # If the chunks are identical, write the final_merged_mod_chunk to the temporary file
-                final_perf_chunk_sizes.append(len(formatted_final_merged_mod_chunk))
+                final_perf_chunk_sizes.append(len(final_merged_mod_chunk))
                 temp_merged_mod.writelines(final_merged_mod_chunk)
                 temp_merged_mod.flush()  # Flush the buffer to write the lines to the file
                 continue
 
             # Use difflib to create a unified diff for the chunk
             diff = difflib.unified_diff(
-                formatted_final_merged_mod_chunk,
-                formatted_new_mod_chunk,
+                final_merged_mod_chunk,
+                new_mod_chunk,
                 fromfile=final_merged_mod_file,
                 tofile=new_mods_file,
             )
@@ -952,8 +1009,8 @@ def merge_files(
                 new_mods_file,
                 final_merged_mod_file,
                 diff,
-                formatted_final_merged_mod_chunk,
-                formatted_new_mod_chunk,
+                final_merged_mod_chunk,
+                new_mod_chunk,
                 valid_requirements,
                 temp_merged_mod_file,
                 last_display_diff,
@@ -1004,6 +1061,38 @@ def merge_files(
             final_perf_chunk_sizes.append(len(cleansed_lines))
             temp_merged_mod.writelines(cleansed_lines)
             temp_merged_mod.flush()  # Flush the buffer to write the lines to the file
+
+    # Validate the formatting of the temp_merged_mod_file
+    format_result = format_file(temp_merged_mod_file)
+    if not format_result:
+        # If the file is not formatted correctly, then give user options to manually fix the file
+        if valid_requirements["code"]:
+            logger.info(
+                "Opening the temp merged mod file in VS Code for manual formatting."
+            )
+            open_files_in_vscode_compare(final_merged_mod_file, temp_merged_mod_file)
+
+        while True:
+            logger.info(
+                "\nThe temporary merged mod file is not formatted correctly. Options:\n"
+                "1. Skip poorly formatted file\n"
+                "2. Save poorly formatted file\n"
+                "3. Quit\n"
+            )
+            user_choice = input("Enter your choice: ").strip().lower()
+
+            if not user_choice or user_choice not in {"1", "2", "3"}:
+                logger.warning("Invalid choice. Please choose again.")
+                continue
+
+            if user_choice == "1":
+                skip_file_bool = True
+                break
+            if user_choice == "2":
+                break
+            if user_choice == "3":
+                quit_out_bool = True
+                break
 
     if not quit_out_bool and not skip_file_bool and not overwrite_file_bool:
         # Move the temporary file to the final_merged_mod_file
@@ -1173,6 +1262,7 @@ def merge_tool(
                     f"Final merged mod file does not exist. Copying {new_mods_path} to {final_merged_mod_path}"
                 )
                 # TODO: Pass org_comp flag to merge_tool.py to enable comparison to base game files - build out support in merge_tool.py
+                # TODO: Don't auto-copy over files that don't exist in the final merged mod directory - just compare existing files
                 shutil.copy2(new_mods_path, final_merged_mod_path)
                 continue
 

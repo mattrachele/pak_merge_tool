@@ -20,6 +20,7 @@
 # NOTE: Unified Diff starts indexing at 1, but this script uses 0-based indexing
 # So all indexing is forced to start at 0 in this script
 
+# TODO: Split code out into shared functions and main functions into other files to keep merge_tool.py leaner
 # TODO: Update to allow usage with other editors
 # TODO: Add a comment to the merged file with the name of the mod that the code came from with a date and version number
 # TODO: Add support for version checking to display version differences and check for lines removed in newer versions
@@ -42,7 +43,7 @@ init(autoreset=True)
 
 # Set up logging
 logging.basicConfig(
-    level=logging.DEBUG,  # Set the log level
+    level=logging.INFO,  # Set the log level
     format="%(asctime)s | %(levelname)s | %(message)s",  # Set the log format
     handlers=[
         logging.FileHandler("merge_tool.log"),  # Log to a file
@@ -642,7 +643,8 @@ def choice_handler(
                 else:
                     logger.info("%s", line.strip())
 
-        # TODO: Visual progress of merging
+        # TODO: Visual progress of merging - line numbers and total lines
+        # TODO: Display new mod name and final merged mod name in a more readable format and add path after the name
         logger.info(
             f"\n\t{'Final Merged Mod File:':<25} {final_merged_mod_file}\n\t{'New Mods File:':<25} {new_mods_file}"
         )
@@ -868,6 +870,7 @@ def duplicate_line_check(
     return cleansed_lines
 
 
+# TODO: This formatting is only for cfg files - clarify and add more file types
 def config_file_formatter(unformatted_lines, tab_level) -> list:
     """Format the lines of a config file."""
     formatted_lines = []
@@ -895,7 +898,6 @@ def config_file_formatter(unformatted_lines, tab_level) -> list:
     }
 
 
-# TODO: This formatting is only for cfg files - clarify and add more file types
 def format_file(file_path) -> bool:
     """Format a file."""
     temp_formatted_file = file_path + "_format.tmp"
@@ -944,8 +946,16 @@ def merge_files(
         with open(perf_chunk_sizes_file, "r", encoding="utf-8") as f:
             final_perf_chunk_sizes = json.loads(f.read())
 
+    # TODO: Visual progress of merging - line numbers and total lines
     # TODO: Display new mod name and final merged mod name in a more readable format and add path after the name
-    logger.info(f"\n\tMrg: {new_mods_file}\n\tNew: {final_merged_mod_file}")
+    # INFO |
+    # Mrg: unpacked_game_paks\combined\game_files\Stalker2\Config\DefaultGame.ini
+    # New: ~merged_mods_v2-0_P\Stalker2\Config\DefaultGame.ini
+    logger.info(f"\n\tMrg: {final_merged_mod_file}\n\tNew: {new_mods_file}")
+    # New Format:
+    #   Mrg: merge_dir_name | merge_file_name | merge_file_path
+    #   New: new_dir_name   | new_file_name   | new_mods_file_path
+
     start_time = time.time()
 
     # Create a temporary file to store the merged contents
@@ -1121,7 +1131,11 @@ def merge_files(
 
 
 def merge_directories(
-    new_mods_dir, final_merged_mod_dir, valid_requirements, confirm_user_choice=False
+    new_mods_dir,
+    final_merged_mod_dir,
+    valid_requirements,
+    confirm_user_choice=False,
+    org_comp=False,
 ) -> str:
     """Recursively merge the contents of two directories."""
     # Ensure the final_merged_mod directory exists
@@ -1137,25 +1151,45 @@ def merge_directories(
         final_merged_mod_item = os.path.join(final_merged_mod_dir, item)
 
         if os.path.isdir(new_mods_item):
-            logger.debug(f"New Mods Item is a dir: {new_mods_item}")
+            # logger.debug(f"New Mods Item is a dir: {new_mods_item}")
+            if not os.path.exists(final_merged_mod_item) and not org_comp:
+                logger.info(
+                    f"Final merged mod directory does not exist. Copying {new_mods_item} to {final_merged_mod_item}"
+                )
+                shutil.copytree(new_mods_item, final_merged_mod_item)
+                continue
+            elif not os.path.exists(final_merged_mod_item) and org_comp:
+                logger.debug(
+                    f"Final merged mod directory does not exist: {final_merged_mod_item}\n\tSkipping Merge of: {new_mods_item}"
+                )
+                continue
+
             # If the item is a directory, recursively merge it
             result = merge_directories(
                 new_mods_item,
                 final_merged_mod_item,
                 valid_requirements,
                 confirm_user_choice,
+                org_comp,
             )
             if result == "quit":
                 return "quit"
         else:
             # If the item is a file, handle conflicts
-            logger.debug(f"New Mods Item is a file: {new_mods_item}")
+            # logger.debug(f"New Mods Item is a file: {new_mods_item}")
 
-            if not os.path.exists(final_merged_mod_item):
+            # Check if the final merged mod file exists and just copy it over if it doesn't
+            #   Unless the org_comp flag is set, then don't copy over the file
+            if not os.path.exists(final_merged_mod_item) and not org_comp:
                 logger.info(
                     f"Final merged mod file does not exist. Copying {new_mods_item} to {final_merged_mod_item}"
                 )
                 shutil.copy2(new_mods_item, final_merged_mod_item)
+                continue
+            elif not os.path.exists(final_merged_mod_item) and org_comp:
+                logger.debug(
+                    f"Final merged mod file does not exist: {final_merged_mod_item}\n\tSkipping Merge of: {new_mods_item}"
+                )
                 continue
 
             # Validate the file extension to ensure it's a text file and not a binary file
@@ -1173,7 +1207,11 @@ def merge_directories(
                 ".bat",
                 ".sh",
             }
-            if file_extension not in valid_file_extensions:
+            if (
+                file_extension not in valid_file_extensions
+                and confirm_user_choice
+                and not org_comp
+            ):
                 logger.info("Handling non-text file.")
                 result = non_text_file_choice_handler(
                     final_merged_mod_item, new_mods_item
@@ -1186,8 +1224,15 @@ def merge_directories(
                 elif result["status"] == "overwrite":
                     shutil.copy2(new_mods_item, final_merged_mod_item)
                 continue
+            elif file_extension not in valid_file_extensions and not org_comp:
+                logger.info("Handling non-text file.")
+                shutil.copy2(new_mods_item, final_merged_mod_item)
+                continue
+            elif file_extension not in valid_file_extensions:
+                continue
 
             logger.debug(f"Final Merged Mod Item exists: {final_merged_mod_item}")
+
             result = merge_files(
                 new_mods_item,
                 final_merged_mod_item,
@@ -1201,10 +1246,15 @@ def merge_directories(
 
 
 def merge_tool(
-    new_mods_dir, final_merged_mod_dir, verbose=False, confirm=False
+    new_mods_dir, final_merged_mod_dir, verbose=False, confirm=False, org_comp=False
 ) -> bool:
-    logger.info(f"Verbose: {verbose}")
-    logger.info(f"Confirm: {confirm}")
+    # Update log level if verbose is set
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+
+    logger.debug(f"Log Level: {logger.level}")
+    logger.debug(f"Verbose: {verbose}")
+    logger.debug(f"Confirm: {confirm}")
 
     # Validate the requirements
     valid_requirements = validate_requirements()
@@ -1239,14 +1289,25 @@ def merge_tool(
 
         # Check if the item is a directory
         if os.path.isdir(new_mods_path):
-            logger.info(
-                f"Merging new mods dir: {new_mods_path} to final merged mod dir: {final_merged_mod_path}"
-            )
+            # logger.debug(f"New Mods Item is a dir: {new_mods_path}")
+            if not os.path.exists(final_merged_mod_path) and not org_comp:
+                logger.info(
+                    f"Final merged mod directory does not exist. Copying {new_mods_path} to {final_merged_mod_path}"
+                )
+                shutil.copytree(new_mods_path, final_merged_mod_path)
+                continue
+            elif not os.path.exists(final_merged_mod_path) and org_comp:
+                logger.debug(
+                    f"Final merged mod directory does not exist: {final_merged_mod_path}\n\tSkipping Merge of: {new_mods_path}"
+                )
+                continue
+
             result = merge_directories(
                 new_mods_path,
                 final_merged_mod_path,
                 valid_requirements,
                 confirm,
+                org_comp,
             )
             if result == "quit":
                 logger.info("Merge aborted.")
@@ -1254,16 +1315,19 @@ def merge_tool(
 
         # Handle the case where the item is a file in the root directory
         else:
-            logger.info(f"Processing final merged mod path: {final_merged_mod_path}")
-
+            # logger.info(f"Processing final merged mod path: {final_merged_mod_path}")
             # Check if the final merged mod file exists and just copy it over if it doesn't
-            if not os.path.exists(final_merged_mod_path):
+            #   Unless the org_comp flag is set, then don't copy over the file
+            if not os.path.exists(final_merged_mod_path) and not org_comp:
                 logger.info(
                     f"Final merged mod file does not exist. Copying {new_mods_path} to {final_merged_mod_path}"
                 )
-                # TODO: Pass org_comp flag to merge_tool.py to enable comparison to base game files - build out support in merge_tool.py
-                # TODO: Don't auto-copy over files that don't exist in the final merged mod directory - just compare existing files
                 shutil.copy2(new_mods_path, final_merged_mod_path)
+                continue
+            elif not os.path.exists(final_merged_mod_path) and org_comp:
+                logger.debug(
+                    f"Final merged mod file does not exist: {final_merged_mod_path}\n\tSkipping Merge of: {new_mods_path}"
+                )
                 continue
 
             # Validate the file extension to ensure it's a text file and not a binary file
@@ -1281,7 +1345,7 @@ def merge_tool(
                 ".bat",
                 ".sh",
             }
-            if file_extension not in valid_file_extensions:
+            if file_extension not in valid_file_extensions and confirm and not org_comp:
                 logger.info("Handling non-text file.")
                 result = non_text_file_choice_handler(
                     final_merged_mod_path, new_mods_path
@@ -1295,6 +1359,12 @@ def merge_tool(
                 elif result["status"] == "overwrite":
                     shutil.copy2(new_mods_path, final_merged_mod_path)
                 continue
+            elif file_extension not in valid_file_extensions and not org_comp:
+                logger.info("Handling non-text file.")
+                shutil.copy2(new_mods_path, final_merged_mod_path)
+                continue
+            elif file_extension not in valid_file_extensions:
+                continue
 
             result = merge_files(
                 new_mods_path,
@@ -1306,7 +1376,7 @@ def merge_tool(
                 logger.info("Merge aborted.")
                 return False
 
-    logger.info("Merge complete.")
+    logger.info("Merge complete.\n")
     return True
 
 
@@ -1314,9 +1384,20 @@ def main() -> bool:
     """Main function to merge mod directories."""
     # Define the command-line arguments
     parser = argparse.ArgumentParser(description="Merge mod directories.")
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
     parser.add_argument(
-        "--confirm", action="store_true", help="Disable user confirmation"
+        "--verbose", action="store_true", help="Enable verbose output", required=False
+    )
+    parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Disable user confirmation",
+        required=False,
+    )
+    parser.add_argument(
+        "--org_comp",
+        action="store_true",
+        help="Enable comparison to base game files",
+        required=False,
     )
     parser.add_argument(
         "--new_mods_dir", help="The directory containing the new mods", required=True
@@ -1329,7 +1410,11 @@ def main() -> bool:
     args = parser.parse_args()
 
     return merge_tool(
-        args.new_mods_dir, args.final_merged_mod_dir, args.verbose, args.confirm
+        args.new_mods_dir,
+        args.final_merged_mod_dir,
+        args.verbose,
+        args.confirm,
+        args.org_comp,
     )
 
 

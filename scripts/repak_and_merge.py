@@ -15,7 +15,7 @@
 # Only Unpak Game Files Example:
 #   clear;python pak_merge_tool\scripts\repak_and_merge.py --unpak_only --repak_path="repak.exe" --new_mods_dir="C:\Program Files (x86)\Steam\steamapps\common\S.T.A.L.K.E.R. 2 Heart of Chornobyl\Stalker2\Content\Paks" --final_merged_mod_dir="unpacked_game_paks"
 # Merge Check Against Base Game Files Example:
-#   clear;python pak_merge_tool\scripts\repak_and_merge.py --org_comp --new_mods_dir="unpacked_game_paks" --final_merged_mod_dir="~merged_mods_v2-0_P"
+#   clear;python pak_merge_tool\scripts\repak_and_merge.py --org_comp --new_mods_dir="unpacked_game_paks\combined" --final_merged_mod_dir="~merged_mods_v2-0_P"
 
 import os
 import argparse
@@ -29,7 +29,7 @@ from merge_tool import merge_tool
 
 # Set up logging
 logging.basicConfig(
-    level=logging.DEBUG,  # Set the log level
+    level=logging.INFO,  # Set the log level
     format="%(asctime)s | %(levelname)s | %(message)s",  # Set the log format
     handlers=[
         logging.FileHandler("merge_tool.log"),  # Log to a file
@@ -273,7 +273,7 @@ def merge_mods(
             continue
 
         # Skip mods that have already been merged
-        mod_history = history.get(new_mod_dir)
+        mod_history = history.get(new_mod_dir) or {}
         merged_date = mod_history.get("merged")
         last_modified_date = mod_history.get("last_modified")
         if (
@@ -290,14 +290,12 @@ def merge_mods(
         logger.info(f"Processing mod: {new_mod_dir}")
         logger.info(f"New Mod Directory: {new_mod_dir_path}")
 
-        # TODO: Pass org_comp flag to merge_tool.py to enable comparison to base game files - build out support in merge_tool.py
-        # This will help prevent overwriting updates from the base game and/or crashing the game
         result = merge_tool(
             new_mods_dir=new_mod_dir_path,
             final_merged_mod_dir=final_merged_mod_dir,
             verbose=verbose,
             confirm=confirm,
-            # org_comp=org_comp,
+            org_comp=org_comp,
         )
 
         if not result:
@@ -360,6 +358,12 @@ def main() -> bool:
         required=True,
     )
     args = parser.parse_args()
+
+    # Update log level if verbose is set
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+
+    logger.info(f"Log Level: {logger.level}")
 
     # Log boolean cmd ln args
     logger.info(f"Verbose: {args.verbose}")

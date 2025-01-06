@@ -41,42 +41,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def version_check(command) -> bool:
-    """Check the version of a command."""
-    try:
-        result = subprocess.run(
-            [command, "--version"],
-            capture_output=True,
-            text=True,
-            shell=True,
-            check=True,
-        )
-        if result.returncode != 0:
-            logger.info(f"{command} is not available.")
-    except FileNotFoundError:
-        logger.info(
-            f"Command '{command}' not found. Ensure it is installed and added to your PATH."
-        )
-        return False
-
-    return True
-
-
-def validate_requirements() -> dict:
-    """Validate that the required tools are available."""
-    validated_requirements = {}
-
-    # Check if less is available
-    less_installed = version_check("less")
-    validated_requirements["less"] = less_installed
-
-    # Check if code is available
-    code_installed = version_check("code")
-    validated_requirements["code"] = code_installed
-
-    return validated_requirements
-
-
 def sanitize_mod_name(pak_file_name) -> dict:
     """Sanitize the mod name to remove special characters and version numbers."""
     # Remove .pak, split on _, remove zz's, remove other special characters, and lowercase
@@ -132,11 +96,14 @@ def unpack_files(repak_path, pak_dir, extract_dir, resume) -> bool:
     json_config = os.path.join(
         os.path.dirname(__file__), "..", "configs", "config.json"
     )
-    config = (
-        json.load(open(json_config, "r", encoding="utf-8"))
-        if os.path.exists(json_config)
-        else {}
-    )
+    # config = (
+    #     json.load(open(json_config, "r", encoding="utf-8"))
+    #     if os.path.exists(json_config)
+    #     else {}
+    # )
+    config = {}
+    with open(json_config, "r", encoding="utf-8") as f:
+        config = json.load(f)
 
     # Check if the repak_path is valid and save to config file if new
     if not repak_path:
@@ -218,6 +185,7 @@ def unpack_files(repak_path, pak_dir, extract_dir, resume) -> bool:
                 extract_path,
             ],
             shell=True,
+            check=True,
         )
         if result.returncode != 0:
             logger.error(f"Error unpacking {pak_file_path}")
@@ -246,11 +214,14 @@ def load_history() -> dict:
     history_config = os.path.join(
         os.path.dirname(__file__), "..", "configs", "history.json"
     )
-    history = (
-        json.load(open(history_config, "r", encoding="utf-8"))
-        if os.path.exists(history_config)
-        else {}
-    )
+    # history = (
+    #     json.load(open(history_config, "r", encoding="utf-8"))
+    #     if os.path.exists(history_config)
+    #     else {}
+    # )
+    history = {}
+    with open(history_config, "r", encoding="utf-8") as f:
+        history = json.load(f)
 
     return history
 

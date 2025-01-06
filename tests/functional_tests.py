@@ -4,6 +4,8 @@
 
 # Usage: clear;pytest .\tests\functional_tests.py
 
+# TODO: Update tests for new project script structure
+
 import os
 import unittest
 from unittest.mock import patch, mock_open, Mock

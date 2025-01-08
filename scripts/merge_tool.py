@@ -20,7 +20,6 @@
 # NOTE: Unified Diff starts indexing at 1, but this script uses 0-based indexing
 # So all indexing is forced to start at 0 in this script
 
-# TODO: Reduce duplicate code by reworking or creating new functions
 # TODO: Update to allow usage with other editors
 # TODO: Add a comment to the merged file with the name of the mod that the code came from with a date and version number
 # TODO: Add support for version checking to display version differences and check for lines removed in newer versions
@@ -38,9 +37,10 @@ from choice_handler import (
     choice_handler,
     non_text_file_choice_handler,
     open_files_in_vscode_compare,
+    bad_format_choice_handler,
 )
 from requirements_handler import validate_requirements
-from format_handler import format_file, duplicate_line_check
+from format_handler import format_file, duplicate_line_check, display_file_parts
 
 
 # Set up logging
@@ -89,15 +89,7 @@ def merge_files(
         with open(perf_chunk_sizes_file, "r", encoding="utf-8") as f:
             final_perf_chunk_sizes = json.loads(f.read())
 
-    # TODO: Visual progress of merging - line numbers and total lines
-    # TODO: Display new mod name and final merged mod name in a more readable format and add path after the name
-    # INFO |
-    # Mrg: unpacked_game_paks\combined\game_files\Stalker2\Config\DefaultGame.ini
-    # New: ~merged_mods_v2-0_P\Stalker2\Config\DefaultGame.ini
-    logger.info(f"\n\tMrg: {final_merged_mod_file}\n\tNew: {new_mods_file}")
-    # New Format:
-    #   Mrg: merge_dir_name | merge_file_name | merge_file_path
-    #   New: new_dir_name   | new_file_name   | new_mods_file_path
+    display_file_parts(final_merged_mod_file, new_mods_file)
 
     start_time = time.time()
 
@@ -215,39 +207,23 @@ def merge_files(
             temp_merged_mod.writelines(cleansed_lines)
             temp_merged_mod.flush()  # Flush the buffer to write the lines to the file
 
-    # Validate the formatting of the temp_merged_mod_file
-    format_result = format_file(temp_merged_mod_file)
-    if not format_result:
-        # If the file is not formatted correctly, then give user options to manually fix the file
-        if valid_requirements["code"]:
-            logger.info(
-                "Opening the temp merged mod file in VS Code for manual formatting."
-            )
-            open_files_in_vscode_compare(final_merged_mod_file, temp_merged_mod_file)
-
-        while True:
-            logger.info(
-                "\nThe temporary merged mod file is not formatted correctly. Options:\n"
-                "1. Skip poorly formatted file\n"
-                "2. Save poorly formatted file\n"
-                "3. Quit\n"
-            )
-            user_choice = input("Enter your choice: ").strip().lower()
-
-            if not user_choice or user_choice not in {"1", "2", "3"}:
-                logger.warning("Invalid choice. Please choose again.")
-                continue
-
-            if user_choice == "1":
-                skip_file_bool = True
-                break
-            if user_choice == "2":
-                break
-            if user_choice == "3":
-                quit_out_bool = True
-                break
-
     if not quit_out_bool and not skip_file_bool and not overwrite_file_bool:
+        # Validate the formatting of the temp_merged_mod_file
+        format_result = format_file(temp_merged_mod_file)
+        if not format_result:
+            # If the file is not formatted correctly, then give user options to manually fix the file
+            if valid_requirements["code"]:
+                logger.info(
+                    "Opening the temp merged mod file in VS Code for manual formatting."
+                )
+                open_files_in_vscode_compare(
+                    final_merged_mod_file, temp_merged_mod_file
+                )
+
+            bad_format_choice = bad_format_choice_handler(skip_file_bool, quit_out_bool)
+            skip_file_bool = bad_format_choice["skip_file_bool"]
+            quit_out_bool = bad_format_choice["quit_out_bool"]
+
         # Move the temporary file to the final_merged_mod_file
         shutil.move(temp_merged_mod_file, final_merged_mod_file)
 
@@ -379,8 +355,6 @@ def merge_directories(
             if file_extension not in valid_file_extensions:
                 continue
 
-            logger.debug(f"Final Merged Mod Item exists: {final_merged_mod_item}")
-
             result = merge_files(
                 new_mods_item,
                 final_merged_mod_item,
@@ -388,150 +362,10 @@ def merge_directories(
                 confirm_user_choice,
             )
             if result == "quit":
+                logger.info("Merge aborted.")
                 return "quit"
 
     return "continue"
-
-
-def merge_tool(
-    new_mods_dir, final_merged_mod_dir, verbose=False, confirm=False, org_comp=False
-) -> bool:
-    """Merge the contents of two directories."""
-    # Update log level if verbose is set
-    if verbose:
-        logger.setLevel(logging.DEBUG)
-
-    logger.debug(f"Log Level: {logger.level}")
-    logger.debug(f"Verbose: {verbose}")
-    logger.debug(f"Confirm: {confirm}")
-
-    # Validate the requirements
-    valid_requirements = validate_requirements()
-
-    # Check if the final_merged_mod_dir is a directory and isn't inside the new_mods_dir
-    if not os.path.isdir(final_merged_mod_dir):
-        logger.error(f"{final_merged_mod_dir} is not a directory.")
-        return False
-
-    # Check if the new_mods_dir is a directory
-    if not os.path.isdir(new_mods_dir):
-        logger.error(f"{new_mods_dir} is not a directory.")
-        return False
-
-    final_merged_mod_dir_abs = os.path.abspath(final_merged_mod_dir)
-    new_mods_dir_abs = os.path.abspath(new_mods_dir)
-    if new_mods_dir_abs.startswith(
-        final_merged_mod_dir_abs
-    ) or final_merged_mod_dir_abs.startswith(new_mods_dir_abs):
-        logger.error("Cannot merge directories that are inside each other.")
-        return False
-
-    new_mods_dir_list = os.listdir(new_mods_dir)
-    sorted_new_mods_dir_list = sorted(new_mods_dir_list)
-
-    # Iterate through all directories in the new_mods base directory
-    for path_name in sorted_new_mods_dir_list:
-        new_mods_path = os.path.join(new_mods_dir, path_name)
-        final_merged_mod_path = os.path.join(final_merged_mod_dir, path_name)
-
-        logger.info(f"{'Processing new mods path:':<33} {new_mods_path}")
-
-        # Check if the item is a directory
-        if os.path.isdir(new_mods_path):
-            # logger.debug(f"New Mods Item is a dir: {new_mods_path}")
-            if not os.path.exists(final_merged_mod_path) and not org_comp:
-                logger.info(
-                    f"Final merged mod directory does not exist. Copying {new_mods_path} to {final_merged_mod_path}"
-                )
-                shutil.copytree(new_mods_path, final_merged_mod_path)
-                continue
-
-            if not os.path.exists(final_merged_mod_path) and org_comp:
-                logger.debug(
-                    f"Final merged mod directory does not exist: {final_merged_mod_path}\n\tSkipping Merge of: {new_mods_path}"
-                )
-                continue
-
-            result = merge_directories(
-                new_mods_path,
-                final_merged_mod_path,
-                valid_requirements,
-                confirm,
-                org_comp,
-            )
-            if result == "quit":
-                logger.info("Merge aborted.")
-                return False
-
-        # Handle the case where the item is a file in the root directory
-        else:
-            # logger.info(f"Processing final merged mod path: {final_merged_mod_path}")
-            # Check if the final merged mod file exists and just copy it over if it doesn't
-            #   Unless the org_comp flag is set, then don't copy over the file
-            if not os.path.exists(final_merged_mod_path) and not org_comp:
-                logger.info(
-                    f"Final merged mod file does not exist. Copying {new_mods_path} to {final_merged_mod_path}"
-                )
-                shutil.copy2(new_mods_path, final_merged_mod_path)
-                continue
-
-            if not os.path.exists(final_merged_mod_path) and org_comp:
-                logger.debug(
-                    f"Final merged mod file does not exist: {final_merged_mod_path}\n\tSkipping Merge of: {new_mods_path}"
-                )
-                continue
-
-            # Validate the file extension to ensure it's a text file and not a binary file
-            file_extension = os.path.splitext(new_mods_path)[1]
-            valid_file_extensions = {
-                ".txt",
-                ".cfg",
-                ".ini",
-                ".lua",
-                ".json",
-                ".xml",
-                ".yml",
-                ".yaml",
-                ".md",
-                ".bat",
-                ".sh",
-            }
-            if file_extension not in valid_file_extensions and confirm and not org_comp:
-                logger.info("Handling non-text file.")
-                result = non_text_file_choice_handler(
-                    final_merged_mod_path, new_mods_path
-                )
-                if result["status"] == "quit":
-                    logger.info("Merge aborted.")
-                    return False
-
-                if result["status"] == "skip":
-                    continue
-
-                if result["status"] == "overwrite":
-                    shutil.copy2(new_mods_path, final_merged_mod_path)
-                continue
-
-            if file_extension not in valid_file_extensions and not org_comp:
-                logger.info("Handling non-text file.")
-                shutil.copy2(new_mods_path, final_merged_mod_path)
-                continue
-
-            if file_extension not in valid_file_extensions:
-                continue
-
-            result = merge_files(
-                new_mods_path,
-                final_merged_mod_path,
-                valid_requirements,
-                confirm,
-            )
-            if result == "quit":
-                logger.info("Merge aborted.")
-                return False
-
-    logger.info("Merge complete.\n")
-    return True
 
 
 def main() -> bool:
@@ -563,13 +397,30 @@ def main() -> bool:
     )
     args = parser.parse_args()
 
-    return merge_tool(
+    # Update log level if verbose is set
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+
+    logger.debug(f"Log Level: {logger.level}")
+    logger.debug(f"Verbose: {args.verbose}")
+    logger.debug(f"Confirm: {args.confirm}")
+
+    # Validate the requirements
+    valid_requirements = validate_requirements()
+
+    result = merge_directories(
         args.new_mods_dir,
         args.final_merged_mod_dir,
-        args.verbose,
+        valid_requirements,
         args.confirm,
         args.org_comp,
     )
+
+    if result == "quit":
+        return False
+
+    logger.info("Merge complete.\n")
+    return True
 
 
 if __name__ == "__main__":

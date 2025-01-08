@@ -10,6 +10,7 @@ import pydoc
 import os
 
 from colorama import init, Fore
+from format_handler import remove_trailing_whitespace_and_newlines, display_file_parts
 
 # Initialize colorama
 init(autoreset=True)
@@ -28,27 +29,42 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def get_user_choice(choices) -> str:
+    """Display the choices and get the user's choice."""
+    choices[str(len(choices) + 1)] = "Quit"  # Add a quit option
+    while True:
+        # Display user choices
+        input_option_text = "\nOptions:\n"
+        for choice_number, choice in choices.items():
+            input_option_text += f"{choice_number}. {choice}\n"
+
+        input_option_text += "Enter your choice: "
+
+        # Get user input
+        user_choice = input(input_option_text)
+
+        # Check for valid input
+        if not user_choice in choices:
+            logger.warning("Invalid choice. Please choose again.")
+            continue
+
+        return user_choice
+
+
 def confirm_choice(original_lines, new_lines) -> str:
     """Display the new lines and ask for confirmation."""
     updated_lines = [line for line in new_lines if line not in original_lines]
     logger.info("New lines to be added:")
     for line in updated_lines:
-        logger.info("%s%s", Fore.GREEN, line.strip())
-    while True:
-        user_choice = input(
-            "Confirm your choice:\n"
-            "1. Accept\n"
-            "2. Choose another option\n"
-            "3. Quit and Save\n"
-            "4. Quit\n"
-            "Enter your choice: "
-        ).strip()
+        no_trail_line = remove_trailing_whitespace_and_newlines(line)
+        logger.info("%s%s", Fore.GREEN, no_trail_line)
 
-        if not user_choice or user_choice not in {"1", "2", "3", "4"}:
-            logger.warning("Invalid choice. Please choose again.")
-            continue
-
-        return user_choice
+    choices = {
+        "1": "Accept Choice and Continue",
+        "2": "Choose another option",
+        "3": "Quit and Save",
+    }
+    return get_user_choice(choices)
 
 
 def view_text_with_pydoc(text) -> None:
@@ -88,19 +104,24 @@ def open_files_in_vscode_compare(file1, file2) -> None:
     subprocess.run(["code", "--diff", abs_file1, abs_file2], shell=True, check=True)
 
 
-def disp_diff_re_print(input_vars) -> dict:
+def print_disp_diff(input_vars) -> dict:
     """Re-print the display diff."""
     disp_diff_chunk = input_vars["disp_diff_chunk"]
+    final_merged_mod_file = input_vars["final_merged_mod_file"]
+    new_mods_file = input_vars["new_mods_file"]
 
     for line in disp_diff_chunk:
+        no_trail_line = remove_trailing_whitespace_and_newlines(line)
         if line.startswith("+"):
-            logger.info("%s%s", Fore.GREEN, line.strip())
+            logger.info("%s%s", Fore.GREEN, no_trail_line)
         elif line.startswith("-"):
-            logger.info("%s%s", Fore.RED, line.strip())
+            logger.info("%s%s", Fore.RED, no_trail_line)
         elif line.startswith("@"):
-            logger.info("%s%s", Fore.CYAN, line.strip())
+            logger.info("%s%s", Fore.CYAN, no_trail_line)
         else:
-            logger.info("%s", line.strip())
+            logger.info("%s", no_trail_line)
+
+    display_file_parts(final_merged_mod_file, new_mods_file)
 
     return {
         "status": "continue",
@@ -317,7 +338,7 @@ def load_choice_functions(valid_requirements) -> dict:
     # Define the choices for the user
     choice_functions = {}
     default_choice_functions = [
-        {"disp_diff_re_print": "Re-print the Display Diff"},
+        {"print_disp_diff": "Print the Display Diff"},
         {"disp_chunk_skip_no_changes": "Display Chunk: Skip - Make No Changes"},
         {
             "disp_chunk_overwrite_new_changes": "Display Chunk: Overwrite with New Changes"
@@ -501,6 +522,23 @@ def choice_handler(
                     f"Last Display New Mod Length: {last_disp_diff_new_mod_length} | Final Mod Length: {final_merged_mod_length}"
                 )
 
+        input_vars = {
+            "disp_final_merged_mod_chunk": disp_final_merged_mod_chunk,
+            "disp_new_mod_chunk": disp_new_mod_chunk,
+            "disp_diff_chunk": disp_diff_chunk,
+            "display_chunk_array": display_chunk_array,
+            "f_final_merged_mod_chunk": f_final_merged_mod_chunk,
+            "f_new_mod_chunk": f_new_mod_chunk,
+            "diff_lines_list": diff_lines_list,
+            "tmp_merged_mod_lines": tmp_merged_mod_lines,
+            "temp_merged_mod_file": temp_merged_mod_file,
+            "final_merged_mod_start_line": final_merged_mod_start_line,
+            "final_merged_mod_length": final_merged_mod_length,
+            "valid_requirements": valid_requirements,
+            "new_mods_file": new_mods_file,
+            "final_merged_mod_file": final_merged_mod_file,
+        }
+
         if last_display_diff and last_user_choice and dup_diff_found:
             logger.info("Last display diff is the same as the current display diff.")
             logger.info(f"Using the last user choice: {last_user_choice}")
@@ -509,22 +547,6 @@ def choice_handler(
             choice_functions = load_choice_functions(valid_requirements)
             choice_function_dict = choice_functions.get(last_user_choice)
             choice_function = list(choice_function_dict.keys())[0]
-
-            input_vars = {
-                "disp_final_merged_mod_chunk": disp_final_merged_mod_chunk,
-                "disp_new_mod_chunk": disp_new_mod_chunk,
-                "disp_diff_chunk": disp_diff_chunk,
-                "display_chunk_array": display_chunk_array,
-                "f_final_merged_mod_chunk": f_final_merged_mod_chunk,
-                "f_new_mod_chunk": f_new_mod_chunk,
-                "diff_lines_list": diff_lines_list,
-                "tmp_merged_mod_lines": tmp_merged_mod_lines,
-                "final_merged_mod_start_line": final_merged_mod_start_line,
-                "final_merged_mod_length": final_merged_mod_length,
-                "valid_requirements": valid_requirements,
-                "new_mods_file": new_mods_file,
-                "final_merged_mod_file": final_merged_mod_file,
-            }
 
             # Call the choice function
             result = globals()[choice_function](input_vars)
@@ -559,24 +581,10 @@ def choice_handler(
             for line in disp_diff_chunk:
                 if line.startswith("@"):
                     last_display_diff = line.strip()
-        else:
-            # Display the chunked lines with color coding
-            for line in disp_diff_chunk:
-                if line.startswith("+"):
-                    logger.info("%s%s", Fore.GREEN, line.strip())
-                elif line.startswith("-"):
-                    logger.info("%s%s", Fore.RED, line.strip())
-                elif line.startswith("@"):
-                    logger.info("%s%s", Fore.CYAN, line.strip())
-                    last_display_diff = line.strip()
-                else:
-                    logger.info("%s", line.strip())
 
-        # TODO: Visual progress of merging - line numbers and total lines
-        # TODO: Display new mod name and final merged mod name in a more readable format and add path after the name
-        logger.info(
-            f"\n\t{'Final Merged Mod File:':<25} {final_merged_mod_file}\n\t{'New Mods File:':<25} {new_mods_file}"
-        )
+            display_file_parts(final_merged_mod_file, new_mods_file)
+        else:
+            print_disp_diff(input_vars)
 
         # Define the choices for the user
         choice_functions = load_choice_functions(valid_requirements)
@@ -605,23 +613,6 @@ def choice_handler(
 
             choice_function_dict = choice_functions.get(user_choice)
             choice_function = list(choice_function_dict.keys())[0]
-
-            input_vars = {
-                "disp_final_merged_mod_chunk": disp_final_merged_mod_chunk,
-                "disp_new_mod_chunk": disp_new_mod_chunk,
-                "disp_diff_chunk": disp_diff_chunk,
-                "display_chunk_array": display_chunk_array,
-                "f_final_merged_mod_chunk": f_final_merged_mod_chunk,
-                "f_new_mod_chunk": f_new_mod_chunk,
-                "diff_lines_list": diff_lines_list,
-                "tmp_merged_mod_lines": tmp_merged_mod_lines,
-                "temp_merged_mod_file": temp_merged_mod_file,
-                "final_merged_mod_start_line": final_merged_mod_start_line,
-                "final_merged_mod_length": final_merged_mod_length,
-                "valid_requirements": valid_requirements,
-                "new_mods_file": new_mods_file,
-                "final_merged_mod_file": final_merged_mod_file,
-            }
 
             # Call the choice function
             result = globals()[choice_function](input_vars)
@@ -696,27 +687,36 @@ def choice_handler(
 
 def non_text_file_choice_handler(final_merged_mod_path, new_mods_path) -> dict:
     """Handle the choice for non-text files."""
-    while True:
-        logger.info(f"\n\tMrg: {final_merged_mod_path}\n\tNew: {new_mods_path}")
-        user_choice = (
-            input(
-                "\nNon-text file detected. Options:\n"
-                "1. Skip\n"
-                "2. Overwrite\n"
-                "3. Quit\n"
-                "Enter your choice: "
-            )
-            .strip()
-            .lower()
-        )
+    logger.info(f"\n\tMrg: {final_merged_mod_path}\n\tNew: {new_mods_path}")
+    logger.info("Non-text file detected.")
+    choices = {
+        "1": "Skip",
+        "2": "Overwrite",
+    }
+    user_choice = get_user_choice(choices)
+    if user_choice == "1":
+        return {"status": "skip"}
+    if user_choice == "2":
+        return {"status": "overwrite"}
+    if user_choice == "3":
+        return {"status": "quit"}
 
-        if not user_choice or user_choice not in {"1", "2", "3"}:
-            logger.warning("Invalid choice. Please choose again.")
-            continue
 
-        if user_choice == "1":
-            return {"status": "skip"}
-        if user_choice == "2":
-            return {"status": "overwrite"}
-        if user_choice == "3":
-            return {"status": "quit"}
+def bad_format_choice_handler(skip_file_bool, quit_out_bool) -> dict:
+    """Handle the choice for a poorly formatted file."""
+    logger.info("The temporary merged mod file is not formatted correctly.")
+    choices = {
+        "1": "Skip poorly formatted file",
+        "2": "Save poorly formatted file",
+    }
+    user_choice = get_user_choice(choices)
+    if user_choice == "1":
+        skip_file_bool = True
+
+    if user_choice == "3":
+        quit_out_bool = True
+
+    return {
+        "skip_file_bool": skip_file_bool,
+        "quit_out_bool": quit_out_bool,
+    }

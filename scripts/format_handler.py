@@ -8,6 +8,11 @@ import logging
 import os
 import re
 
+from colorama import init
+
+# Initialize colorama
+init(autoreset=True)
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,  # Set the log level
@@ -25,6 +30,22 @@ logger = logging.getLogger(__name__)
 def strip_whitespace(line) -> str:
     """Strip leading and trailing whitespace from a line."""
     return re.sub(r"^[ \t]+|[ \t]+$", "", line)
+
+
+def remove_trailing_whitespace_and_newlines(line) -> str:
+    """Remove trailing whitespace from a line."""
+    return re.sub(r"[ \t\n]+$", "", line)
+
+
+def display_file_parts(final_file, new_file) -> None:
+    """Display the parts of the final and new files."""
+    # TODO: Visual progress of merging - line numbers and total lines
+    final_merged_mod_dir, final_filename = os.path.split(final_file)
+    new_mods_dir, new_filename = os.path.split(new_file)
+    logger.info(
+        f"\n\t{'Mrg:':<10} {final_filename:<25} | {final_merged_mod_dir:<35} | {final_file}"
+        f"\n\t{'New:':<10} {new_filename:<25} | {new_mods_dir:<35} | {new_file}"
+    )
 
 
 # FIXME: Test the merge lines and dup line check more - seems still has issues
@@ -93,13 +114,11 @@ def duplicate_line_check(
 
 
 # TODO: This formatting is only for cfg files - clarify and add more file types
-# TODO: Seems to just increase the tab level - need to clear it out first - leading tabs
 def config_file_formatter(unformatted_lines, tab_level) -> list:
     """Format the lines of a config file."""
     formatted_lines = []
     for line in unformatted_lines:
         formatted_line = ""
-        # no_trail_line = re.sub(r"[ \t]+$", "", line)
         stripped_line = strip_whitespace(line)  # Use to avoid removing newlines
         if "struct.begin" in line:
             formatted_line = f"{'    ' * tab_level}{stripped_line}"

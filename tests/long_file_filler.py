@@ -30,7 +30,6 @@ def fill_file_with_config_lines(file_path, num_lines):
     :param file_path: Path to the file to be filled.
     :param num_lines: Number of lines to write to the file.
     """
-    # TODO: Add more variation to the lines written to the file.
     with open(file_path, "w", encoding="utf-8") as file:
         max_depth = 3
         struct_size = 0

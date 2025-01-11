@@ -7,6 +7,7 @@
 import logging
 import os
 import re
+import shutil
 
 from colorama import init
 
@@ -137,10 +138,18 @@ def config_file_formatter(unformatted_lines, tab_level) -> list:
     }
 
 
-def format_file(file_path) -> bool:
+def format_file(file_path, performance_chunk_size) -> bool:
     """Format a file."""
+    # Check if cfg file and format it accordingly, else just skip it until more file types are added
+    if not file_path.endswith(".cfg"):
+        logger.debug(f"Skipping non-cfg file: {file_path}")
+        return False
+
+    if not os.path.exists(file_path):
+        logger.error(f"Given file path does not exist: {file_path}")
+        return False
+
     temp_formatted_file = file_path + "_format.tmp"
-    performance_chunk_size = 1024
     current_depth = 0
     with open(file_path, "r", encoding="utf-8") as f, open(
         temp_formatted_file, "w", encoding="utf-8"
@@ -155,11 +164,33 @@ def format_file(file_path) -> bool:
             current_depth = formatted_data["tab_level"]
             f_temp.writelines(formatted_lines)
 
-    os.replace(temp_formatted_file, file_path)
-    if current_depth != 0:
-        logger.warning(
-            "Config file is not formatted correctly. Did not end at tab level 0."
+        # Flush the file to ensure all data is written
+        f_temp.flush()
+
+        if current_depth != 0:
+            logger.warning(
+                f"Failed to format file - Did not end at tab level 0: {file_path}"
+            )
+            return False
+
+    if not os.path.exists(temp_formatted_file):
+        logger.error(f"Temporary formatted file does not exist: {temp_formatted_file}")
+        return False
+
+    if os.path.getsize(temp_formatted_file) == 0:
+        logger.error(f"Temporary formatted file is empty: {temp_formatted_file}")
+        return False
+
+    try:
+        shutil.move(temp_formatted_file, file_path)
+    except PermissionError:
+        logger.error(
+            f"Permission denied while replacing file: \n\tOrg: {file_path}\n\tNew: {temp_formatted_file}"
         )
+        return False
+    except Exception as e:
+        logger.error(f"An error occurred while replacing file: {file_path}")
+        logger.error(e)
         return False
 
     return True

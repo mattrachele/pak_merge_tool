@@ -25,7 +25,7 @@ import logging
 import re
 
 from datetime import datetime
-from merge_tool import merge_tool
+from merge_tool import merge_directories
 
 # Set up logging
 logging.basicConfig(
@@ -113,6 +113,7 @@ def unpack_files(repak_path, pak_dir, extract_dir, resume) -> bool:
             logger.error("repak path not found in config file.")
             return False
 
+        # TODO: Add support for FModel to extract game assets and repak them
         if (
             not os.path.exists(config["repak_path"])
             or "repak.exe" not in config["repak_path"]
@@ -261,7 +262,7 @@ def merge_mods(
         logger.info(f"Processing mod: {new_mod_dir}")
         logger.info(f"New Mod Directory: {new_mod_dir_path}")
 
-        result = merge_tool(
+        result = merge_directories(
             new_mods_dir=new_mod_dir_path,
             final_merged_mod_dir=final_merged_mod_dir,
             verbose=verbose,

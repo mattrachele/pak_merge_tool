@@ -412,8 +412,8 @@ def choice_handler(
     MAX_LINES_TO_DISPLAY = 100
 
     # Definitions:
-    # Whole Merged Mod Chunk:       Up to 1024 lines of the Merged Mod File
-    # Whole New Mod Chunk:          Up to 1024 lines of the New Mod File
+    # Whole Merged Mod Chunk:       Performance chunked lines of the Merged Mod File
+    # Whole New Mod Chunk:          Performance chunked lines of the New Mod File
     # Whole Diff Chunk:             Diff of the Whole Merged Mod Chunk and Whole New Mod Chunk
     # Display Diff Chunk:           Split Whole Diff Chunk - Start of @ to line before the next @ -> split on @
     # Display Merged Mod Chunk:     Start line to length of the Display Diff Chunk

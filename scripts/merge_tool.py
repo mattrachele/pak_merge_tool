@@ -73,6 +73,7 @@ def merge_files(
     new_mods_file, final_merged_mod_file, valid_requirements, confirm_user_choice=False
 ) -> str:
     """Merge the contents of two text files, handling conflicts."""
+    # TODO: Move max_perf_chunk_size to a config file
     max_perf_chunk_size = 1024  # Define the chunk size for reading the files
     perf_chunk = 0  # Initialize the performance chunk counter
     quit_out_bool = False
@@ -99,8 +100,8 @@ def merge_files(
     last_processed_line = reload_temp_merged_mod_file(temp_merged_mod_file)
 
     # Pre-format the files before reading them
-    format_file(new_mods_file)
-    format_file(final_merged_mod_file)
+    format_file(new_mods_file, max_perf_chunk_size)
+    format_file(final_merged_mod_file, max_perf_chunk_size)
 
     with open(new_mods_file, "r", encoding="utf-8") as new_mod, open(
         final_merged_mod_file, "r", encoding="utf-8"
@@ -209,7 +210,7 @@ def merge_files(
 
     if not quit_out_bool and not skip_file_bool and not overwrite_file_bool:
         # Validate the formatting of the temp_merged_mod_file
-        format_result = format_file(temp_merged_mod_file)
+        format_result = format_file(temp_merged_mod_file, max_perf_chunk_size)
         if not format_result:
             # If the file is not formatted correctly, then give user options to manually fix the file
             if valid_requirements["code"]:
@@ -313,6 +314,7 @@ def merge_directories(
                 )
                 continue
 
+            # TODO: Add file types to a config file
             # Validate the file extension to ensure it's a text file and not a binary file
             file_extension = os.path.splitext(new_mods_item)[1]
             valid_file_extensions = {

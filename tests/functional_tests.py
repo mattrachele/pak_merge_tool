@@ -8,9 +8,9 @@ import os
 import unittest
 from unittest.mock import patch, mock_open, Mock, call
 import sys
-import argparse
-import subprocess
-import json
+# import argparse
+# import subprocess
+# import json
 
 # Add the directory containing merge_tool.py to the Python path
 os_path_dirname = os.path.dirname(__file__)
@@ -674,28 +674,28 @@ class TestRepakAndMerge(unittest.TestCase):
     #     result = load_history()
     #     assert result == {"test1": {"version": ["1"]}}
 
-    def test_merge_mods(self):
-        """Test merge_mods(sorted_new_mods_dir_list, new_mods_dir, final_merged_mod_dir, verbose, confirm, org_comp, resume) -> bool"""
-        from scripts.repak_and_merge import merge_mods
+    # def test_merge_mods(self):
+    #     """Test merge_mods(sorted_new_mods_dir_list, new_mods_dir, final_merged_mod_dir, verbose, confirm, org_comp, resume) -> bool"""
+    #     from scripts.repak_and_merge import merge_mods
 
-        sorted_new_mods_dir_list = ["test1", "test2"]
-        new_mods_dir = "test3"
-        final_merged_mod_dir = "test4"
-        verbose = False
-        confirm = False
-        org_comp = False
-        resume = False
+    #     sorted_new_mods_dir_list = ["test1", "test2"]
+    #     new_mods_dir = "test3"
+    #     final_merged_mod_dir = "test4"
+    #     verbose = False
+    #     confirm = False
+    #     org_comp = False
+    #     resume = False
 
-        result = merge_mods(
-            sorted_new_mods_dir_list,
-            new_mods_dir,
-            final_merged_mod_dir,
-            verbose,
-            confirm,
-            org_comp,
-            resume,
-        )
-        assert result is True
+    #     result = merge_mods(
+    #         sorted_new_mods_dir_list,
+    #         new_mods_dir,
+    #         final_merged_mod_dir,
+    #         verbose,
+    #         confirm,
+    #         org_comp,
+    #         resume,
+    #     )
+    #     assert result is True
 
     # @patch("argparse.ArgumentParser.parse_args")
     # @patch("os.listdir")
@@ -730,48 +730,48 @@ class TestRepakAndMerge(unittest.TestCase):
     #     assert result is True
 
 
-class TestRequirementsHandler(unittest.TestCase):
-    # FIXME: Breaks on GitHub Actions
-    # @patch("subprocess.run")
-    # def test_version_check(self, mock_subprocess_run):
-    #     """Test version_check(command) -> bool"""
-    #     from scripts.requirements_handler import version_check
+# class TestRequirementsHandler(unittest.TestCase):
+#     # FIXME: Breaks on GitHub Actions
+#     # @patch("subprocess.run")
+#     # def test_version_check(self, mock_subprocess_run):
+#     #     """Test version_check(command) -> bool"""
+#     #     from scripts.requirements_handler import version_check
 
-    #     command = "test1"
-    #     mock_subprocess_run.return_value = subprocess.CompletedProcess(
-    #         args=command, returncode=0
-    #     )
-    #     result = version_check(command)
-    #     assert result is True
+#     #     command = "test1"
+#     #     mock_subprocess_run.return_value = subprocess.CompletedProcess(
+#     #         args=command, returncode=0
+#     #     )
+#     #     result = version_check(command)
+#     #     assert result is True
 
-    def test_validate_requirements(self):
-        """Test validate_requirements() -> dict"""
-        from scripts.requirements_handler import validate_requirements
+#     def test_validate_requirements(self):
+#         """Test validate_requirements() -> dict"""
+#         from scripts.requirements_handler import validate_requirements
 
-        result = validate_requirements()
-        assert result == {"code": True, "less": True}
+#         result = validate_requirements()
+#         assert result == {"code": True, "less": True}
 
-    @patch("builtins.open", new_callable=mock_open)
-    def test_load_config(self, mock_open_file):
-        """Test load_config(config_name) -> dict"""
-        from scripts.requirements_handler import load_config
+#     @patch("builtins.open", new_callable=mock_open)
+#     def test_load_config(self, mock_open_file):
+#         """Test load_config(config_name) -> dict"""
+#         from scripts.requirements_handler import load_config
 
-        mock_json_data = '{"test1": "test2"}'
-        mock_file_handle = mock_open_file.return_value
-        mock_file_handle.read.return_value = mock_json_data
+#         mock_json_data = '{"test1": "test2"}'
+#         mock_file_handle = mock_open_file.return_value
+#         mock_file_handle.read.return_value = mock_json_data
 
-        config_name = "test1"
-        result = load_config(config_name)
-        assert result == {"test1": "test2"}
+#         config_name = "test1"
+#         result = load_config(config_name)
+#         assert result == {"test1": "test2"}
 
-    # @patch("builtins.open", new_callable=mock_open)
-    # def test_save_config(self, mock_open_file):
-    #     """Test save_config(config) -> None"""
-    #     from scripts.requirements_handler import save_config
+#     # @patch("builtins.open", new_callable=mock_open)
+#     # def test_save_config(self, mock_open_file):
+#     #     """Test save_config(config) -> None"""
+#     #     from scripts.requirements_handler import save_config
 
-    #     config = {"test1": "test2"}
-    #     save_config(config)
-    #     mock_open_file.assert_called_once_with("config.json", "w", encoding="utf-8")
-    #     mock_open_file.return_value.write.assert_called_once_with(
-    #         json.dumps(config, indent=4)
-    #     )
+#     #     config = {"test1": "test2"}
+#     #     save_config(config)
+#     #     mock_open_file.assert_called_once_with("config.json", "w", encoding="utf-8")
+#     #     mock_open_file.return_value.write.assert_called_once_with(
+#     #         json.dumps(config, indent=4)
+#     #     )

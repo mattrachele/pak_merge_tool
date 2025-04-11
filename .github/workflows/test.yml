@@ -57,14 +57,17 @@ jobs:
                 pip install -r tests/requirements.txt
 
             - name: Run pytest with enhanced logging
+              id: pytest
               run: |
                 python -m pytest tests/functional_tests.py \
                   --verbose \
                   --tb=long \
+                  --showlocals \
                   --log-cli-level=DEBUG \
                   --log-cli-format="%(asctime)s | %(levelname)s | %(message)s" \
                   --log-file=pytest.log \
-                  --junitxml=pytest-results.xml
+                  --junitxml=pytest-results.xml \
+                  --capture=no 2>&1 | tee pytest-output.log
 
             - name: Upload pytest logs
               if: always()
@@ -74,4 +77,11 @@ jobs:
                 path: |
                   pytest.log
                   pytest-results.xml
+                  pytest-output.log
+
+            - name: Print test summary
+              if: always()
+              run: |
+                echo "Test Summary:"
+                cat pytest-output.log | grep -E "FAILED|ERROR|PASSED|SKIPPED"
 

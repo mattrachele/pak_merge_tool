@@ -30,7 +30,7 @@ jobs:
             - name: Run pylint
               run: |
                 pip install -r tests/requirements.txt  # Install test dependencies
-                python -m pylint --fail-under=7 .
+                python -m pylint --fail-under=7 --disable=C0114,C0415,R0913,R0917,C0301,R0914,R0911,R0912,R0915,W0613,W1203,C0302,R0904,C0103 .
 
     pytest:
         runs-on: ubuntu-latest

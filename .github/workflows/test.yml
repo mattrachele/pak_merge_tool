@@ -38,8 +38,32 @@ jobs:
             - name: Check out code
               uses: actions/checkout@v4
 
-            - name: Run pytest tests
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                python-version: '3.x'
+
+            - name: Install dependencies
               run: |
-                pip install -r tests/requirements.txt  # Install test dependencies
-                python -m pytest tests/functional_tests.py  # Run functional tests
+                python -m pip install --upgrade pip
+                pip install -r tests/requirements.txt
+
+            - name: Run pytest with enhanced logging
+              run: |
+                python -m pytest tests/functional_tests.py \
+                  --verbose \
+                  --tb=long \
+                  --log-cli-level=DEBUG \
+                  --log-cli-format="%(asctime)s | %(levelname)s | %(message)s" \
+                  --log-file=pytest.log \
+                  --junitxml=pytest-results.xml
+
+            - name: Upload pytest logs
+              if: always()
+              uses: actions/upload-artifact@v3
+              with:
+                name: pytest-logs
+                path: |
+                  pytest.log
+                  pytest-results.xml
 

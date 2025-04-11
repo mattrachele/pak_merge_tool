@@ -6,6 +6,8 @@
 
 import logging
 import subprocess
+import json
+import os
 
 # Set up logging
 logging.basicConfig(
@@ -55,3 +57,22 @@ def validate_requirements() -> dict:
     validated_requirements["code"] = code_installed
 
     return validated_requirements
+
+
+def load_config(config_name) -> dict:
+    """Load the config file."""
+    # Json config path: ..\configs\config.json
+    json_config = os.path.join(os.path.dirname(__file__), "..", "configs", config_name)
+    config = {}
+    with open(json_config, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    return config
+
+
+def save_config(config) -> None:
+    """Save the config file."""
+    json_config = os.path.join(
+        os.path.dirname(__file__), "..", "configs", "config.json"
+    )
+    with open(json_config, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=4)

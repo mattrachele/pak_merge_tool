@@ -12,6 +12,7 @@ import argparse
 import os
 
 from format_handler import format_file
+from requirements_handler import load_config
 
 # Set up logging
 logging.basicConfig(
@@ -27,15 +28,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def recursive_format_dir(path: str) -> None:
+def recursive_format_dir(path: str, max_perf_chunk_size: int) -> None:
     """Recursively format all files in a directory and its subdirectories."""
-    max_perf_chunk_size = 1024
     dir_list = os.listdir(path)
     sorted_dir_list = sorted(dir_list, key=lambda x: x.lower())
     for item in sorted_dir_list:
         item_path = os.path.join(path, item)
         if os.path.isdir(item_path):
-            recursive_format_dir(item_path)
+            recursive_format_dir(item_path, max_perf_chunk_size)
         else:
             format_file(item_path, max_perf_chunk_size)
 
@@ -54,7 +54,11 @@ def main() -> bool:
         logger.error(f"The specified path is not a directory: {args.format_dir}")
         return False
 
-    recursive_format_dir(args.format_dir)
+    # Load the config file
+    config = load_config("config.json")
+    max_perf_chunk_size = config["max_perf_chunk_size"]
+
+    recursive_format_dir(args.format_dir, max_perf_chunk_size)
 
     return True
 

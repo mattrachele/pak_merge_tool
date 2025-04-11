@@ -26,6 +26,7 @@ import re
 
 from datetime import datetime
 from merge_tool import merge_directories
+from requirements_handler import load_config, save_config
 
 # Set up logging
 logging.basicConfig(
@@ -93,17 +94,7 @@ def unpack_files(repak_path, pak_dir, extract_dir, resume) -> bool:
     aes_key = "0x33A604DF49A07FFD4A4C919962161F5C35A134D37EFA98DB37A34F6450D7D386"
 
     # Json config path: ..\configs\config.json
-    json_config = os.path.join(
-        os.path.dirname(__file__), "..", "configs", "config.json"
-    )
-    # config = (
-    #     json.load(open(json_config, "r", encoding="utf-8"))
-    #     if os.path.exists(json_config)
-    #     else {}
-    # )
-    config = {}
-    with open(json_config, "r", encoding="utf-8") as f:
-        config = json.load(f)
+    config = load_config("config.json")
 
     # Check if the repak_path is valid and save to config file if new
     if not repak_path:
@@ -130,8 +121,7 @@ def unpack_files(repak_path, pak_dir, extract_dir, resume) -> bool:
 
         # Save the repak_path to the config file
         config["repak_path"] = repak_path
-        with open(json_config, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=4)
+        save_config(config)
 
     # List all .pak files in the directory
     pak_files = [f for f in os.listdir(pak_dir) if f.endswith(".pak")]

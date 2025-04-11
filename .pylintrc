@@ -1,6 +1,6 @@
 [MASTER]
 # Add the directory containing merge_tool.py to the Python path
-init-hook='import sys, os; sys.path.insert(0, os.path.abspath("scripts"))'
+init-hook='import sys, os; sys.path.insert(0, os.path.abspath(".."))'
 
 [MESSAGES CONTROL]
 # Disable the message about missing module docstring

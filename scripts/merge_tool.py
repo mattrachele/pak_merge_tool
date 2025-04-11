@@ -39,7 +39,7 @@ from choice_handler import (
     open_files_in_vscode_compare,
     bad_format_choice_handler,
 )
-from requirements_handler import validate_requirements
+from requirements_handler import validate_requirements, load_config
 from format_handler import format_file, duplicate_line_check, display_file_parts
 
 
@@ -70,11 +70,16 @@ def reload_temp_merged_mod_file(temp_merged_mod_file) -> int:
 
 
 def merge_files(
-    new_mods_file, final_merged_mod_file, valid_requirements, confirm_user_choice=False
+    new_mods_file,
+    final_merged_mod_file,
+    valid_requirements,
+    config,
+    confirm_user_choice=False,
 ) -> str:
     """Merge the contents of two text files, handling conflicts."""
-    # TODO: Move max_perf_chunk_size to a config file
-    max_perf_chunk_size = 1024  # Define the chunk size for reading the files
+    max_perf_chunk_size = config[
+        "max_perf_chunk_size"
+    ]  # Define the chunk size for reading the files
     perf_chunk = 0  # Initialize the performance chunk counter
     quit_out_bool = False
     skip_file_bool = False
@@ -254,6 +259,7 @@ def merge_directories(
     new_mods_dir,
     final_merged_mod_dir,
     valid_requirements,
+    config,
     confirm_user_choice=False,
     org_comp=False,
 ) -> str:
@@ -290,6 +296,7 @@ def merge_directories(
                 new_mods_item,
                 final_merged_mod_item,
                 valid_requirements,
+                config,
                 confirm_user_choice,
                 org_comp,
             )
@@ -314,22 +321,10 @@ def merge_directories(
                 )
                 continue
 
-            # TODO: Add file types to a config file
             # Validate the file extension to ensure it's a text file and not a binary file
             file_extension = os.path.splitext(new_mods_item)[1]
-            valid_file_extensions = {
-                ".txt",
-                ".cfg",
-                ".ini",
-                ".lua",
-                ".json",
-                ".xml",
-                ".yml",
-                ".yaml",
-                ".md",
-                ".bat",
-                ".sh",
-            }
+            valid_file_extensions = config["valid_file_extensions"]
+
             if (
                 file_extension not in valid_file_extensions
                 and confirm_user_choice
@@ -361,6 +356,7 @@ def merge_directories(
                 new_mods_item,
                 final_merged_mod_item,
                 valid_requirements,
+                config,
                 confirm_user_choice,
             )
             if result == "quit":
@@ -410,10 +406,14 @@ def main() -> bool:
     # Validate the requirements
     valid_requirements = validate_requirements()
 
+    # Load the config file
+    config = load_config("config.json")
+
     result = merge_directories(
         args.new_mods_dir,
         args.final_merged_mod_dir,
         valid_requirements,
+        config,
         args.confirm,
         args.org_comp,
     )

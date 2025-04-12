@@ -1,0 +1,17 @@
+{
+    "repak_path": "repak.exe",
+    "valid_file_extensions": [
+        ".txt",
+        ".cfg",
+        ".ini",
+        ".lua",
+        ".json",
+        ".xml",
+        ".yml",
+        ".yaml",
+        ".md",
+        ".bat",
+        ".sh"
+    ],
+    "max_perf_chunk_size": 1024
+}
